@@ -8,7 +8,7 @@ import styx.StyxException;
 import styx.Value;
 
 /**
- * The interface a UDM session uses for reading and writing mutable values.
+ * The interface a STYX session uses for reading and writing mutable values.
  * <p>
  * Each mutable value is identified by a reference.
  * As references are hierarchical, the resulting values have the form of a tree.
