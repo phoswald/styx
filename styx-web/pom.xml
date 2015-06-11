@@ -1,0 +1,135 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>phoswald</groupId>
+  <artifactId>styx-web</artifactId>
+  <version>0.1-SNAPSHOT</version>
+  <packaging>war</packaging>
+
+  <name>STYX Web</name>
+
+  <dependencies>
+    <!-- *** Normal dependencies *** -->
+    <dependency>
+      <groupId>phoswald</groupId>
+      <artifactId>styx-core</artifactId>
+      <version>0.1-SNAPSHOT</version>
+    </dependency>
+    <!--
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>3.1.0</version>
+    </dependency>
+    -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-webapp</artifactId>
+      <version>9.1.5.v20140505</version>
+    </dependency>
+    <!-- *** Dependencies available at runtime, but not for compilation *** -->
+    <dependency>
+      <groupId>phoswald</groupId>
+      <artifactId>styx-db</artifactId>
+      <version>0.1-SNAPSHOT</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish</groupId>
+      <artifactId>javax.json</artifactId>
+      <version>1.0.4</version>
+      <scope>runtime</scope> <!-- already added with scope=test in styx-core -->
+    </dependency>
+    <!-- *** Dependencies for testing, only available in src/test/ *** -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.8.2</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.0</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <!-- Special configuration for the packaging of the WAR. In a simple case, specifiying -->
+        <!-- <packaging>war</packaging> and <finalName>styx-web</finalName> at the top level would be enough. -->
+        <artifactId>maven-war-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+          <archive>
+            <!-- Let the WAR contain a JAR-like manifest. We need this to make the WAR executable.  -->
+            <manifest>
+              <mainClass>styx.web.jetty.WebServer</mainClass>
+            </manifest>
+          </archive>
+          <!-- Don't put the Jetty and Servlet JARs into the WEB-INF/lib directory. -->
+          <!-- Don't put our classes for embedded Jetty into the WEB-INF/classes directory. -->
+          <packagingExcludes>WEB-INF/lib/jetty-*.jar,WEB-INF/lib/javax.servlet-api-*.jar,WEB-INF/classes/styx/web/jetty/**</packagingExcludes>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <!-- Put the contents of the Jetty and Servlet JARs into the root directory (like it would be in a shaded JAR). -->
+        <!-- Dependencies are followed transitively. An approach using overlays in maven-war-plugin does not work transitively. -->
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>2.9</version>
+        <executions>
+          <execution>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>unpack-dependencies</goal>
+            </goals>
+            <configuration>
+              <includeGroupIds>org.eclipse.jetty,javax.servlet</includeGroupIds>
+              <excludes>META-INF/ECLIPSEF.*</excludes>
+              <outputDirectory>${project.build.directory}/${project.artifactId}-${project.version}</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <!-- Put our classes for embedded Jetty into the root directory (like it would be in a JAR). -->
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>2.7</version>
+        <executions>
+          <execution>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/${project.artifactId}-${project.version}/styx/web/jetty</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.build.directory}/classes/styx/web/jetty</directory>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+    </plugins>
+    <!-- <finalName>styx-web</finalName> -->
+  </build>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- <sonar.language>java</sonar.language> -->
+  </properties>
+
+</project>

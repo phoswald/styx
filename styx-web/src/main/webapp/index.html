@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>STYX Scratchpad for REST</title>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script>
+      $(document).ready(function() {
+        $('.box').hide();
+        $("#but-updframe").click(function() {
+          var source = $("#fld-framesrc").val();
+          $("#frame").attr("src", "rest" + source);
+        });
+        $("#but-head").click(function() {
+          var reference = $("#fld-reference").val();
+          var request   = $("#fld-request").val();
+          $("#result").text("...");
+          $.ajax("rest" + reference, { type: "HEAD" })
+          .done(function(data) { $("#fld-response").val(data); $("#result").text("OK!"); })
+          .fail(function()     { $("#fld-response").val("");   $("#result").text("ERROR!"); });
+        });
+        $("#but-get").click(function() {
+          var reference = $("#fld-reference").val();
+          var request   = $("#fld-request").val();
+          $("#result").text("...");
+          $.ajax("rest" + reference, { type: "GET" })
+          .done(function(data) { $("#fld-response").val(data); $("#result").text("OK!"); })
+          .fail(function()     { $("#fld-response").val("");   $("#result").text("ERROR!"); });
+        });
+        $("#but-list").click(function() {
+          var reference = $("#fld-reference").val();
+          var request   = $("#fld-request").val();
+          $("#result").text("...");
+          $.ajax("rest" + reference + "?meth=LIST", { type: "GET" })
+          .done(function(data) { $("#fld-response").val(data); $("#result").text("OK!"); })
+          .fail(function()     { $("#fld-response").val("");   $("#result").text("ERROR!"); });
+        });
+        $("#but-post").click(function() {
+          var reference = $("#fld-reference").val();
+          var request   = $("#fld-request").val();
+          var reqtype   = $("#fld-reqtype").val();
+          $("#result").text("...");
+          $.ajax("rest" + reference, { type: "POST", data: request, contentType: reqtype })
+          .done(function(data) { $("#fld-response").val(data); $("#result").text("OK!"); })
+          .fail(function()     { $("#fld-response").val("");   $("#result").text("ERROR!"); });
+        });
+        $("#but-put").click(function() {
+          var reference = $("#fld-reference").val();
+          var request   = $("#fld-request").val();
+          var reqtype   = $("#fld-reqtype").val();
+          $("#result").text("...");
+          $.ajax("rest" + reference, { type: "PUT", data: request, contentType: reqtype })
+          .done(function(data) { $("#fld-response").val(data); $("#result").text("OK!"); })
+          .fail(function()     { $("#fld-response").val("");   $("#result").text("ERROR!"); });
+        });
+        $("#but-delete").click(function() {
+          var reference = $("#fld-reference").val();
+          var request   = $("#fld-request").val();
+          $("#result").text("...");
+          $.ajax("rest" + reference, { type: "DELETE" })
+          .done(function(data) { $("#fld-response").val(data); $("#result").text("OK!"); })
+          .fail(function()     { $("#fld-response").val("");   $("#result").text("ERROR!"); });
+        });
+      });
+    </script>
+    <style type="text/css">
+      div.box {
+        border-style: solid; 
+        border-color: gray; 
+        border-width: 1px; 
+        margin: 5px; 
+        padding: 5px; 
+      }
+    </style>
+  </head>
+  <body>
+    <h1>STYX Scratchpad for REST</h1>
+	<p>
+      Content:
+      <a href="content/index">/index</a>
+    </p>
+    <p>
+      REST:
+      <a href="rest/">/</a>
+      <a href="#" onclick="$('.box').hide(); $('#box1').show()">IFrame</a>
+      <a href="#" onclick="$('.box').hide(); $('#box2').show()">Form (GET)</a>
+      <a href="#" onclick="$('.box').hide(); $('#box3').show()">Form (POST)</a>
+      <a href="#" onclick="$('.box').hide(); $('#box4').show()">AJAX</a>
+    </p>
+    <div id="box1" class="box">
+      IFrame: <br/>
+      <input id="fld-framesrc" type="text" value="/temp"/>
+      <button id="but-updframe">SHOW</button>
+      <iframe id="frame" src="rest/temp" width="100%" height="600"></iframe>
+    </div>
+    <div id="box2" class="box">
+      <form method="get" action="rest/">
+        <p>Form with GET</p>
+        <table>
+          <tr>
+            <td>Path</td>
+            <td><input type="text" name="path" value="/temp"/></td>
+          </tr>
+          <tr>
+            <td>Method</td>
+            <td>
+              <select name="meth">
+                <option></option>
+                <option>HEAD</option>
+                <option selected="selected">GET</option>
+                <option>LIST</option>
+                <option>POST</option>
+                <option>PUT</option>
+                <option>DELETE</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td>Request Type</td>
+            <td>
+              <select name="reqt">
+                <option selected="selected"></option>
+                <option>application/udm</option>
+                <option>application/udm-script</option>
+                <option>text/xml</option>
+                <option>application/json</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td>Request Data</td>
+            <td><textarea name="req" rows="16" cols="120"></textarea></td>
+          </tr>
+          <tr>
+            <td>Response Type</td>
+            <td>
+              <select name="rest">
+                <option></option>
+                <option selected="selected">text/plain</option>
+                <option>application/udm</option>
+                <option>text/xml</option>
+                <option>application/json</option>
+              </select>
+              <input name="ind" type="radio" value="true">Indent</input>
+              <input name="ind" type="radio" value="false">Compact</input>
+            </td>
+          </tr>
+          <tr>
+            <td></td>
+            <td><input type="submit"/></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+          </tr>
+        </table>
+      </form>
+    </div>
+    <div id="box3" class="box">
+      <form method="post" action="rest/">
+        <p>Form with POST</p>
+        <table>
+          <tr>
+            <td>Path</td>
+            <td><input type="text" name="path" value="/temp"/></td>
+          </tr>
+          <tr>
+            <td>Method</td>
+            <td>
+              <select name="meth">
+                <option></option>
+                <option>HEAD</option>
+                <option>GET</option>
+                <option>LIST</option>
+                <option selected="selected">POST</option>
+                <option>PUT</option>
+                <option>DELETE</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td>Request Type</td>
+            <td>
+              <select name="reqt">
+                <option></option>
+                <option>application/udm</option>
+                <option selected="selected">application/udm-script</option>
+                <option>text/xml</option>
+                <option>application/json</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td>Request Data</td>
+            <td><textarea name="req" rows="16" cols="120"></textarea></td>
+          </tr>
+          <tr>
+            <td>Response Type</td>
+            <td>
+              <select name="rest">
+                <option></option>
+                <option selected="selected">text/plain</option>
+                <option>application/udm</option>
+                <option>text/xml</option>
+                <option>application/json</option>
+              </select>
+              <input name="ind" type="radio" value="true">Indent</input>
+              <input name="ind" type="radio" value="false">Compact</input>
+            </td>
+          </tr>
+          <tr>
+            <td></td>
+            <td><input type="submit"/></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+          </tr>
+        </table>
+      </form>
+    </div>
+    <div id="box4" class="box">
+      <p>AJAX</p>
+      <table>
+        <tr>
+          <td>Path</td>
+          <td><input id="fld-reference" type="text" value="/temp"/></td>
+        </tr>
+        <tr>
+          <td>Request Type</td>
+          <td>
+            <select id="fld-reqtype">
+              <option></option>
+              <option>application/udm</option>
+              <option selected="selected">application/udm-script</option>
+              <option>text/xml</option>
+              <option>application/json</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td>Request Data</td>
+          <td><textarea id="fld-request" rows="16" cols="120"></textarea></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>
+            <button id="but-head">HEAD</button>
+            <button id="but-get">GET</button>
+            <button id="but-list">LIST</button>
+            <button id="but-post">POST</button>
+            <button id="but-put">PUT</button>
+            <button id="but-delete">DELETE</button>
+          </td>
+        </tr>
+        <tr>
+          <td>Result</td>
+          <td><span id="result"></span></td>
+        </tr>
+        <tr>
+          <td>Response Data</td>
+          <td><textarea id="fld-response" rows="16" cols="120"></textarea></td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

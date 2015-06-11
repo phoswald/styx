@@ -1,0 +1,10 @@
+**/.settings
+**/.classpath
+**/.project
+**/target
+data
+styx-app/doc
+styx-core/doc
+styx-db/doc
+styx-web/doc
+

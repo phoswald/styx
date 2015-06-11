@@ -1,0 +1,102 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>phoswald</groupId>
+  <artifactId>styx-app</artifactId>
+  <version>0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>STYX Application</name>
+
+  <dependencies>
+    <!-- *** Normal dependencies *** -->
+    <dependency>
+      <groupId>phoswald</groupId>
+      <artifactId>styx-core</artifactId>
+      <version>0.1-SNAPSHOT</version>
+    </dependency>
+    <!-- *** Dependencies available at runtime, but not for compilation *** -->
+    <dependency>
+      <groupId>phoswald</groupId>
+      <artifactId>styx-db</artifactId>
+      <version>0.1-SNAPSHOT</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish</groupId>
+      <artifactId>javax.json</artifactId>
+      <version>1.0.4</version>
+      <scope>runtime</scope> <!-- already added with scope=test in styx-core -->
+    </dependency>
+    <!-- *** Dependencies for testing, only available in src/test/ *** -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.8.2</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.0</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <!-- Make an executable JAR -->
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>styx.app.Application</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <!-- Create an uber JAR that contains all dependencies. -->
+        <!-- The uber JAR has the suffix "withdeps" and the original JAR keeps the original name. -->
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.3</version>
+        <configuration>
+          <shadedArtifactAttached>true</shadedArtifactAttached>
+          <shadedClassifierName>withdeps</shadedClassifierName>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <!-- When including dependencies such as JDBC drivers, consider files under META-INF/services/. -->
+            <!-- We merge multiple implementations of the same interface into one service entry. -->
+            <configuration>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+    </plugins>
+  </build>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- <sonar.language>java</sonar.language> -->
+  </properties>
+
+</project>
