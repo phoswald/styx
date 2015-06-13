@@ -56,14 +56,14 @@ public interface Session extends AutoCloseable {
      * @param val an int value.
      * @return a numeric value that exactly represents the given int value, never null.
      */
-    public Number number(int val);
+    public Numeric number(int val);
 
     /**
      * Returns a numeric value for the given 64-bit signed integer value.
      * @param val a long value.
      * @return a numeric value that exactly represents the given long value, never null.
      */
-    public Number number(long val);
+    public Numeric number(long val);
 
     /**
      * Returns a numeric value for the given 64-bit floating point value.
@@ -71,7 +71,7 @@ public interface Session extends AutoCloseable {
      * @return a numeric value that exactly represents the given double value, never null.
      * @throws ArithmeticException if the given double value was INF or NAN.
      */
-    public Number number(double val);
+    public Numeric number(double val);
 
     /**
      * Returns a numeric value for the given decimal string.
@@ -79,7 +79,7 @@ public interface Session extends AutoCloseable {
      * @return a numeric value that exactly represents the given string, never null.
      * @throws NumberFormatException if the given string does not have the appropriate format.
      */
-    public Number number(String val);
+    public Numeric number(String val);
 
     /**
      * Returns a binary value for the given byte array.
@@ -107,6 +107,14 @@ public interface Session extends AutoCloseable {
      * @return an empty complex value, never null.
      */
     public Complex complex();
+
+    public default Complex complex(Value val) {
+        return complex().add(val);
+    }
+
+    public default Complex complex(Value key, Value val) {
+        return complex().put(key, val);
+    }
 
     /**
      * Returns a type instance for the given type definition.

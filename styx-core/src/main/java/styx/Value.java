@@ -95,7 +95,7 @@ public interface Value extends Comparable<Value> {
      * @return a value of type number, never null.
      * @throws ClassCastException if the value is not of type number.
      */
-    public Number asNumber();
+    public Numeric asNumber();
 
     /**
      * Casts the value to type binary.

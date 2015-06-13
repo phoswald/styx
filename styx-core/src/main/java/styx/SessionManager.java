@@ -1,4 +1,4 @@
-package styx.bootstrap;
+package styx;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -8,13 +8,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
-
-import styx.Complex;
-import styx.Session;
-import styx.SessionFactory;
-import styx.SessionProvider;
-import styx.StyxException;
-import styx.StyxRuntimeException;
 
 /**
  * A static class that can be used to create, lookup, register and unregister session factories.
@@ -120,19 +113,26 @@ public final class SessionManager {
         }
     }
 
-    public static Session getDetachedSession() { // TODO (cleanup): review bootstrapping of detached and memory session
+    public static Session getDetachedSession() {
         try {
-            return lookupSessionFactory("detached").createSession();
+            return createSessionFactory("detached", null).createSession();
         } catch (StyxException e) {
-            throw new StyxRuntimeException("Detached session factory is not registered.", e);
+            throw new StyxRuntimeException("Failed to create detached session.", e);
         }
     }
 
-    public static SessionFactory createMemorySessionFactory() { // TODO (cleanup): review bootstrapping of detached and memory session
+    public static SessionFactory createMemorySessionFactory(boolean shared) {
+        return createMemorySessionFactory(shared, null);
+    }
+
+    public static SessionFactory createMemorySessionFactory(boolean shared, Value value) {
         try {
-            return createSessionFactory("memory", null); /* true */
+            Session detached = SessionManager.getDetachedSession();
+            return createSessionFactory("memory", detached.complex().
+                    put(detached.text("shared"), detached.bool(shared)).
+                    put(detached.text("value"), value));
         } catch (StyxException e) {
-            throw new StyxRuntimeException("Memory session provider is not registered.", e);
+            throw new StyxRuntimeException("Failed to create memory session factory.", e);
         }
     }
 }

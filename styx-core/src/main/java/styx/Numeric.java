@@ -5,7 +5,7 @@ package styx;
  * <p>
  * A numeric value is a rational number.
  */
-public interface Number extends Text {
+public interface Numeric extends Text {
 
     public boolean isInteger();
 
@@ -74,5 +74,5 @@ public interface Number extends Text {
      * Converts the number to a normalized number.
      * @return a normalized number.
      */
-    public Number normalize();
+    public Numeric normalize();
 }

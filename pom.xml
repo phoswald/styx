@@ -9,7 +9,7 @@
   <version>0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>STYX Parent POM</name>
+  <name>STYX Parent</name>
 
   <modules>
     <module>styx-core</module>

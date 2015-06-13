@@ -1,16 +1,9 @@
-package styx.bootstrap;
+package styx;
 
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.logging.Logger;
-
-import styx.Complex;
-import styx.Pair;
-import styx.Session;
-import styx.SessionFactory;
-import styx.StyxException;
-import styx.Value;
 
 public final class SystemConfiguration {
 
@@ -19,7 +12,7 @@ public final class SystemConfiguration {
     private static final Session detached = SessionManager.getDetachedSession();
 
     public static void load(String configFile) throws StyxException {
-        SessionManager.registerSessionFactory(null, SessionManager.createMemorySessionFactory());
+        SessionManager.registerSessionFactory(null, SessionManager.createMemorySessionFactory(true));
         Path path = FileSystems.getDefault().getPath(configFile);
         if(Files.exists(path)) {
             Complex config  = detached.deserialize(path).asComplex();
@@ -38,8 +31,8 @@ public final class SystemConfiguration {
             Value factories = config.get(detached.text("factories"));
             if(factories != null) {
                 for(Pair<Value, Value> entry : factories.asComplex()) {
-                    String  factoryName    = entry.key().asText().toTextString();
-                    String  providerName   = entry.val().asComplex().get(detached.text("provider")).asText().toTextString();
+                    String     factoryName    = entry.key().asText().toTextString();
+                    String     providerName   = entry.val().asComplex().get(detached.text("provider")).asText().toTextString();
                     Complex providerParams = entry.val().asComplex().get(detached.text("parameters")).asComplex();
 
                     LOG.info("Registering session factory '" + (factoryName.length() == 0 ? "<default>" : factoryName) + "' with provider '" + providerName + "' and parameters " + detached.serialize(providerParams, false) + ".");

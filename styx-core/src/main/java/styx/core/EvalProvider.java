@@ -1,9 +1,9 @@
 package styx.core;
 
 import styx.Complex;
+import styx.StyxException;
 import styx.Function;
 import styx.Session;
-import styx.StyxException;
 
 public interface EvalProvider {
 

@@ -43,9 +43,9 @@ public final class Serializer {
     }
 
     /**
-     * Serializes an arbitrary UDM value into an OutputStream.
+     * Serializes an arbitrary STYX value into an OutputStream.
      * @param val the value, can be null.
-     * @param stm the OutputStream, receives an UDM text document encoded as UTF-8.
+     * @param stm the OutputStream, receives an STYX text document encoded as UTF-8.
      * @param indent true if the output shall be formatted prettily.
      * @throws StyxException if an error occurs.
      * @throws NullPointerException if the given stream is null.
@@ -55,9 +55,9 @@ public final class Serializer {
     }
 
     /**
-     * Serializes an arbitrary UDM value into a Writer.
+     * Serializes an arbitrary STYX value into a Writer.
      * @param val the value, can be null.
-     * @param stm the Writer, receives an UDM text document.
+     * @param stm the Writer, receives an STYX text document.
      * @param indent true if the output shall be formatted prettily.
      * @throws StyxException if an error occurs.
      * @throws NullPointerException if the given writer is null.
@@ -89,10 +89,10 @@ public final class Serializer {
     }
 
     /**
-     * Deserializes an arbitrary UDM value from an InputStream.
+     * Deserializes an arbitrary STYX value from an InputStream.
      * @param session the session to be used to create values.
-     * @param stm the InputStream, must contain an UDM text document.
-     * @return the deserialized UDM value, can be null.
+     * @param stm the InputStream, must contain an STYX text document.
+     * @return the deserialized STYX value, can be null.
      * @throws StyxException if an error occurs.
      * @throws NullPointerException if the given session or stream is null.
      */
@@ -101,10 +101,10 @@ public final class Serializer {
     }
 
     /**
-     * Deserializes an arbitrary UDM value from a Reader.
+     * Deserializes an arbitrary STYX value from a Reader.
      * @param session the session to be used to create values.
-     * @param stm the Reader, must contain an UDM text document.
-     * @return the deserialized UDM value, can be null.
+     * @param stm the Reader, must contain an STYX text document.
+     * @return the deserialized STYX value, can be null.
      * @throws StyxException if an error occurs.
      * @throws NullPointerException if the given session or reader is null.
      */
@@ -133,8 +133,6 @@ public final class Serializer {
             serializeReference(val.asReference(), stm, curIndent);
         } else if(val.isComplex()) {
             serializeComplex(val.asComplex(), stm, curIndent, deltaIndent);
-        } else if(val.isComplex()) { // TODO: detect tag
-            serializeTag(val.asComplex(), stm, curIndent, deltaIndent);
         } else if(val.isType()) {
             serializeType(val.asType(), stm, curIndent, deltaIndent);
         } else if(val.isFunction()) {
@@ -170,7 +168,7 @@ public final class Serializer {
             }
         } else if(c == '@') {
             stm.rewind(1);
-            return deserializeTag(session, stm);
+            return deserializeComplexTag(session, stm);
         } else if(c == ':') {
             c = stm.read();
             if(c == ':') {
@@ -198,18 +196,10 @@ public final class Serializer {
     private static void serializeText(Text val, Writer stm, boolean quote) throws IOException {
         String  text   = val.toTextString();
         int     length = text.length();
-        if(length == 0) {
-            quote = true; // always quote empty string
-        } else if(val.isNumber() || val.isBinary()) {
+        if(val.isNumber() || val.isBinary()) {
             quote = false; // never quote numbers
-        } else if(!quote) {
-            for(int i = 0; i < length; i++) {
-                char c = text.charAt(i);
-                if(i == 0 && !isLetter(c) || i > 0 && !isLetter(c) && !isDigit(c)) {
-                    quote = true; // quote strange stuff
-                    break;
-                }
-            }
+        } else if(!quote && !isIdent(text)) {
+            quote = true; // quote strange stuff
         }
         if(quote) {
             stm.append('"');
@@ -413,6 +403,16 @@ public final class Serializer {
             stm.append(']');
             return;
         }
+        if(val.hasSingle()) {
+            Pair<Value, Value> pair = val.single();
+            if(!pair.key().isNumber() && !pair.key().isBinary() && isIdent(pair.key().asText().toTextString())) {
+                stm.append('@');
+                serializeValue(pair.key(), stm, true, 0, 0);
+                stm.append(' ');
+                serializeValue(pair.val(), stm, false, curIndent, deltaIndent);
+                return;
+            }
+        }
         stm.append('[');
         boolean first   = true;
         int     autokey = 1;
@@ -484,15 +484,7 @@ public final class Serializer {
         return complex;
     }
 
-    private static void serializeTag(Complex val, Writer stm, int curIndent, int deltaIndent) throws IOException {
-        Pair<Value,Value> pair = val.single();
-        stm.append('@');
-        serializeValue(pair.key(), stm, true, 0, 0);
-        stm.append(' ');
-        serializeValue(pair.val(), stm, false, curIndent, deltaIndent);
-    }
-
-    private static Complex deserializeTag(Session session, LineReader stm) throws IOException, StyxException {
+    private static Complex deserializeComplexTag(Session session, LineReader stm) throws IOException, StyxException {
         int c = stm.read();
         if(c != '@') {
             throw new StyxException(buildMessage(stm, "Invalid tagged value: '@' expected."));
@@ -505,7 +497,7 @@ public final class Serializer {
         if(childVal == null) {
             throw new StyxException("Invalid tagged value: value expected.");
         }
-        return session.complex().put(childKey, childVal);
+        return session.complex(childKey, childVal);
     }
 
     private static void serializeType(Type val, Writer stm, int curIndent, int deltaIndent) throws IOException {
@@ -621,6 +613,17 @@ public final class Serializer {
         } else {
             return val - 'A' + 10;
         }
+    }
+
+    private static boolean isIdent(String text) {
+        int len = text.length();
+        for(int i = 0; i < len; i++) {
+            char c = text.charAt(i);
+            if(i == 0 && !isLetter(c) || i > 0 && !isLetter(c) && !isDigit(c)) {
+                return false;
+            }
+        }
+        return len > 0;
     }
 
     private static boolean isDigit(int c) {

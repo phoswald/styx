@@ -1,7 +1,7 @@
 package styx.core.values;
 
 import styx.Decimal;
-import styx.Number;
+import styx.Numeric;
 
 final class ConcreteNumberDenormalized extends AbstractNumber {
 
@@ -64,7 +64,7 @@ final class ConcreteNumberDenormalized extends AbstractNumber {
     }
 
     @Override
-    public Number normalize() {
+    public Numeric normalize() {
         return number;
     }
 }

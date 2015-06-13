@@ -1,8 +1,8 @@
 package styx.core;
 
 import styx.Complex;
-import styx.Session;
 import styx.StyxException;
+import styx.Session;
 import styx.Type;
 import styx.Value;
 

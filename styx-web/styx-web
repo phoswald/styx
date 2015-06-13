@@ -1,0 +1,2 @@
+#!/bin/sh
+java -Djava.util.logging.config.file=logging.properties -Dstyx.web.http.port=8082 -Dstyx.web.session.factory=lmdb -jar target/styx-web-0.1-SNAPSHOT.war $*

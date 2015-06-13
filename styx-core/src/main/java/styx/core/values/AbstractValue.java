@@ -6,7 +6,7 @@ import styx.Binary;
 import styx.Bool;
 import styx.Complex;
 import styx.Function;
-import styx.Number;
+import styx.Numeric;
 import styx.Reference;
 import styx.StyxException;
 import styx.Text;
@@ -116,7 +116,7 @@ public abstract class AbstractValue implements Value {
     }
 
     @Override
-    public Number asNumber() {
+    public Numeric asNumber() {
         throw new ClassCastException("The value is not a number.");
     }
 
@@ -157,19 +157,19 @@ public abstract class AbstractValue implements Value {
         return ConcreteVoid.VOID;
     }
 
-    public static Number number(int val) {
+    public static Numeric number(int val) {
         return AbstractNumber.factory(val);
     }
 
-    public static Number number(long val) {
+    public static Numeric number(long val) {
         return AbstractNumber.factory(val);
     }
 
-    public static Number number(double val) {
+    public static Numeric number(double val) {
         return AbstractNumber.factory(val);
     }
 
-    public static Number number(String val) {
+    public static Numeric number(String val) {
         return AbstractNumber.factory(val);
     }
 
@@ -187,6 +187,10 @@ public abstract class AbstractValue implements Value {
 
     public static Complex complex() {
         return ConcreteComplex.EMPTY;
+    }
+
+    public static Complex complex(Value key, Value val) {
+        return complex().put(key, val);
     }
 
     /**

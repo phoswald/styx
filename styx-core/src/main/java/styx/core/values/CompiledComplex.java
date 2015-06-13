@@ -7,9 +7,9 @@ import java.util.Objects;
 import styx.Binary;
 import styx.Bool;
 import styx.Complex;
-import styx.Number;
-import styx.Pair;
 import styx.StyxException;
+import styx.Numeric;
+import styx.Pair;
 import styx.Text;
 import styx.Value;
 
@@ -105,7 +105,7 @@ public abstract class CompiledComplex extends AbstractComplex {
         return value != dflt ? bool(value) : null;
     }
 
-    protected static Number convToNumber(Integer val) {
+    protected static Numeric convToNumber(Integer val) {
         return val == null ? null : number(val);
     }
 

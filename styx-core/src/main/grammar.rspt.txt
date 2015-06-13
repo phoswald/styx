@@ -1,0 +1,560 @@
+#############################################################################
+# This file defines a LL(x) grammar and a top down (recursive descent) parser.
+# Rules are defined as lists of terminal or non terminal symbols. 
+# All rules in the grammar must be non left-recursive. A simple example:
+#
+#   NAME = TITLE ' ' SURNAME     |  # Two rules that consist of two non 
+#          FIRSTNAME ' ' SURNAME ;  # terminals and one terminal each.
+#   TITLE = 'DR' | 'PROF' ;         # A rule that consists of terminals only.
+#   FIRSTNAME = WORD ;
+#   SURNAME   = WORD ;
+#   WORD      = LETTER LETTERS ;
+#   LETTER    = <range> 'AZ' ;      # One of many terminals: A, B, ..., Z.
+#   LETTERS   = LETTER LETTERS |    # A right recursive rule. 
+#                              ;    # A rule may also be empty. 
+#
+# Additionally, it is possible to:
+# a) Assign data types to non terminals. 
+#    Example: NAME : String = ... ;
+# b) Place code into rules. You can use the input data and the output 
+#    of preceeding non terminals to compute the output of the rule.         
+#    Example: NAME = TITLE SURNAME { System.out("Hello, "+output1.val+" "+output2.val+".") }
+# c) Customize the code generator by specifying the target package and class as
+#    well as package imports and additional code blocks to be placed into the parser class.
+#    Examples: <namespace:Foo>
+#              <include:java.util.*>
+#              <class:MyParser>
+#              { private bool ValidateSomething(String s) {...} }
+#
+# Note: Use the following command to create a Java parser for this grammar:
+#       $ rspt -gen=java sourcepath/grammar.rspt.txt targetpath/Parser.java
+#############################################################################
+
+### Code Generator Settings #################################################
+
+<namespace:styx.core.parser>
+<include:java.io.ByteArrayOutputStream>
+<include:java.util.ArrayList>
+<include:styx.*>
+<include:styx.core.expressions.*>
+<class:Parser>
+
+{
+    public Session session;
+
+    private static <T> void appendT(Ref<ArrayList<T>> output, T obj) {
+        if(output.val == null)
+            output.val = new ArrayList<T>();
+        output.val.add(obj);
+    }
+}
+
+### Root Symbols ############################################################
+# The root symbols are those symbols that are externally visible.
+# They must be introduced with the instruction <export>.
+
+<export> ROOT_STATEMENT_LIST : ArrayList<Expression> =
+    WSML STMT_BLOCK_HEAD EOF {output.val = output2.val} ;
+
+<export> ROOT_VALUE : Value =
+    WSML VALUE WSML EOF {output.val = Constant.unwrap(output2.val)} |
+    WSML EOF ;
+
+### Whitespace and Comments #################################################
+# WS:   White space (single line, optional)
+# WSML: White space (with line break, optional)
+# SEP:  At most one comma (',') or at least one line break (mandatory)
+
+WS   = <set> ' \t\r'   WS   |    # A space or tab is a single line white space.
+       COMMENT_C       WS   |    # A C style comment is a single line white space.
+       COMMENT_P       WS   | ;  # A C++ style comment is a single line white space.
+
+WSML = <set> ' \t\r\n' WSML |    # A space, tab or line break is a white space.
+       COMMENT_C       WSML |    # A C style comment is a white space.
+       COMMENT_P       WSML | ;  # A C++ style comment is a white space.
+
+SEP  = WS        SEP2 ;          # A separator may start with white space (single line), then..
+SEP2 = '\n' WSML SEP3 |          # ..we need a line break, or..
+       ','       WSML ;          # ..we need a comma (after which we only accept white space).
+SEP3 = ','       WSML |          # After a line break, we accept a single comma, or..
+       WSML           ;          # .. we also accept more line breaks.
+
+COMMENT_C = '/*' COMMENT_C_TAIL ; # A C style comment (/* ... */), it can also be nested.
+COMMENT_P = '//' COMMENT_P_TAIL ; # A C++ style comment (// ... ), terminated by new line or EOF.
+
+COMMENT_C_TAIL = COMMENT_C        COMMENT_C_TAIL |
+                 <notset> '*'     COMMENT_C_TAIL |
+                 '*' <notset> '/' COMMENT_C_TAIL |
+                 '*/' ;
+
+COMMENT_P_TAIL = <notset> '\n' COMMENT_P_TAIL | ;
+
+EOF = {if(pos.val == _input.length) return true} <set> '' ;
+
+### Values ##################################################################
+# Note: BINARY must be parsed before NUMBER because '0xABCD' would match which number '0'.
+
+VALUE : Expression =
+    BINARY    {output.val = new Constant(output1.val)} |
+    NUMBER    {output.val = new Constant(output1.val)} |
+    STRING    {output.val = new Constant(output1.val)} |
+    REFERENCE {output.val = output1.val} |
+    COMPLEX   {output.val = output1.val} |
+    TYPE      {output.val = output1.val} |
+    FUNC      {output.val = output1.val} ;
+
+KEY : Expression =
+    '(' WSML <to:output> EXPRESSION WSML ')' | # TODO really here? VALUE and KEY should both allow (...)
+    IDENT {output.val = new Constant(output1.val)} |
+    <to:output> VALUE ;
+
+### Numeric Value ###
+
+NUMBER : Numeric = 
+    NUMBER_SINTEGER NUMBER_FRACTION_0 NUMBER_EXPONENT_0 {output.val=session.number(new String(_input, pos0.val, pos3.val - pos0.val))} ;
+    
+NUMBER_SINTEGER = '-' NUMBER_UINTEGER | NUMBER_UINTEGER ;
+
+NUMBER_UINTEGER = DEC_DIGIT DEC_DIGIT_0N ;
+
+NUMBER_FRACTION_0 = '.' NUMBER_UINTEGER | ;
+
+NUMBER_EXPONENT_0 = 'E' NUMBER_SINTEGER | ;
+
+DEC_DIGIT_0N = 
+    DEC_DIGIT DEC_DIGIT_0N | ;
+
+DEC_DIGIT : Integer =
+    <set> '0123456789' {output.val = _input[pos1.val-1] - '0'} ;
+    
+### Textual Value ###
+# Note: The two strange characters below in IDENT_LETTER and IDENT_CHAR are 0x0100 and 0xFFEE. Some code points 
+#       at and below 0xFFFF are not valid unicode characters. So we use the last known real characters.  
+
+IDENT : Text =
+    IDENT_LETTER IDENT_CHAR_0N {output.val=session.text(new String(_input, pos0.val, pos2.val - pos0.val))} ;
+    
+IDENT_LETTER =
+    <range> 'az' | <range> 'AZ' | '_'  | <range> 'Ā￮' ;
+
+IDENT_CHAR_0N =
+    IDENT_CHAR IDENT_CHAR_0N | ;
+
+IDENT_CHAR =
+    <range> 'az' | <range> 'AZ' | '_'  | <range> '09' | <range> 'Ā￮' ;
+    
+STRING : Text =
+    '"' STRING_CHAR_0N '"' {output.val = session.text(output2.val != null ? output2.val.toString() : null)} ;
+
+STRING_CHAR_0N : StringBuilder =
+    STRING_CHAR {appendChar(output, output1.val)} <to:output> STRING_CHAR_0N | ;
+                                            
+STRING_CHAR : Character =
+    <notset> '\\"\t\r\n' {output.val=_input[pos1.val-1]} |
+    <to:output> STRING_ESCAPE ;
+    
+STRING_ESCAPE : Character =
+    '\\' <set> '\\\'"' {output.val=_input[pos2.val-1]} |
+    '\\t' {output.val='\\t'} |
+    '\\r' {output.val='\\r'} |
+    '\\n' {output.val='\\n'} |
+    '\\u' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT {output.val = makeChar(output2, output3, output4, output5)} ;
+                           
+{
+    private static void appendByte(Ref<ByteArrayOutputStream> output, int hex1, int hex2) {
+        if(output.val == null) 
+            output.val = new ByteArrayOutputStream();
+        output.val.write((hex1<<4) + (hex2));
+    }
+
+    private static void appendChar(Ref<StringBuilder> output, char character) {
+        if(output.val == null) 
+            output.val = new StringBuilder();
+        output.val.append(character);
+    }
+    
+    private static char makeChar(Ref<Integer> hex1, Ref<Integer> hex2, Ref<Integer> hex3, Ref<Integer> hex4) {
+        return (char) ((hex1.val<<12) + (hex2.val<<8) + (hex3.val<<4) + (hex4.val));
+    }
+}                          
+
+### Binary Value ###
+
+BINARY : Binary =
+    '0x' HEX_DIGIT_0N {output.val=session.binary(output2.val != null ? output2.val.toByteArray() : null)} ;
+    
+HEX_DIGIT_0N : ByteArrayOutputStream =
+    HEX_DIGIT HEX_DIGIT {appendByte(output, output1.val, output2.val)} <to:output> HEX_DIGIT_0N | ;
+
+HEX_DIGIT : Integer =
+    <set> '0123456789' {output.val = _input[pos1.val-1] - '0'}      |
+    <set> 'ABCDEF'     {output.val = _input[pos1.val-1] - 'A' + 10} ;
+
+### Reference ###
+
+REFERENCE : Expression =
+    '[/' WS REFERENCE_HEAD ']' {output.val=new ReferenceExpression(output3.val).propagateConst(session)} ;
+
+REFERENCE_HEAD : ArrayList<Expression> =
+    KEY WS {appendT(output, output1.val)} <to:output> REFERENCE_TAIL | ;
+
+REFERENCE_TAIL : ArrayList<Expression> =
+    '/' WS KEY WS {appendT(output, output3.val)} <to:output> REFERENCE_TAIL | WS ;
+
+### Complex ###
+
+COMPLEX : Expression =
+    '[' WSML COMPLEX_HEAD ']' {output.val=new ComplexExpression(output3.val).propagateConst(session)} |
+    '@' WS KEY WS EXPRESSION {output.val=new ComplexExpression(output3.val, output5.val).propagateConst(session)} ;
+
+COMPLEX_HEAD : ArrayList<PairExpression> =
+    <to:output> COMPLEX_CHILD <to:output> COMPLEX_TAIL | ;
+
+COMPLEX_CHILD : ArrayList<PairExpression> = # TODO: optimize!
+     KEY WS ':' WS EXPRESSION {appendT(output, new PairExpression(output1.val, output5.val))} |
+     EXPRESSION {appendT(output, new PairExpression(output1.val, null))} ;
+
+COMPLEX_TAIL : ArrayList<PairExpression> =
+    SEP <to:output> COMPLEX_CHILD <to:output> COMPLEX_TAIL | WSML ;
+
+### Type ###
+
+TYPE : Expression =
+    '::' WS EXPRESSION {output.val = new UnaryOperator(UnaryOperator.Operator.TypeExpression, output3.val).propagateConst(session)} ;
+
+### Function ###
+
+FUNC : Expression =
+    '->' WS EXPRESSION {output.val = new UnaryOperator(UnaryOperator.Operator.FunctionExpression, output3.val).propagateConst(session)} ;
+
+### Expressions #############################################################
+# Expressions are what function bodies are made of.
+# Control flow expressions like 'if', 'for' or 'try' are sometimes called
+# statements, but they can be used like ordinary expressions as well.
+
+EXPRESSION : Expression =
+    <to:output> STMT_BLOCK |
+    <to:output> STMT_RETURN |
+    <to:output> STMT_YIELD |
+    <to:output> STMT_IF |
+    <to:output> STMT_SWITCH |
+    <to:output> STMT_WHILE |
+    <to:output> STMT_FOR |
+    <to:output> STMT_FOREACH |
+    <to:output> STMT_BREAK |
+    <to:output> STMT_CONTINUE |
+    <to:output> STMT_TRY |
+    <to:output> STMT_THROW |
+    <to:output> STMT_ATOMIC |
+    <to:output> STMT_RETRY |
+    <to:output> STMT_DECLARATION |
+    <to:output> STMT_ASSIGNMENT ;
+
+STMT_BLOCK : Expression =
+    '{' WSML STMT_BLOCK_HEAD '}' {output.val=new Block(output3.val)} ;
+
+STMT_BLOCK_HEAD : ArrayList<Expression> =
+    EXPRESSION {appendT(output, output1.val)} <to:output> STMT_BLOCK_TAIL | ;
+
+STMT_BLOCK_TAIL : ArrayList<Expression> =
+    SEP EXPRESSION {appendT(output, output2.val)} <to:output> STMT_BLOCK_TAIL | WSML ;
+
+STMT_RETURN : Expression =
+    'return' WS EXPRESSION {output.val=new FlowStatement(FlowStatement.Keyword.Return, output3.val)} |
+    'return' {output.val=new FlowStatement(FlowStatement.Keyword.Return, null)} ;
+
+STMT_YIELD : Expression =
+    'yield' WS EXPRESSION {output.val=new FlowStatement(FlowStatement.Keyword.Yield, output3.val)} ;
+
+STMT_IF : Expression =
+    'if' WS '(' WSML EXPRESSION WSML ')' WS EXPRESSION WS STMT_ELSE_0 {output.val=new IfElse(output5.val, output9.val, output11.val)} ;
+
+STMT_ELSE_0 : Expression =
+    'else' WS <to:output> EXPRESSION | ;
+
+STMT_SWITCH : Expression =
+    'switch' WS '(' WSML EXPRESSION WSML ')' WS '{' WSML STMT_CASE_0N WSML '}' ;
+
+STMT_CASE_0N : ArrayList<Expression> =
+    'case' WS '(' WSML EXPRESSION WSML ')' WS EXPRESSION WS <to:output> STMT_CASE_0N | ;
+
+STMT_WHILE : Expression =
+    'loop'                                  WS EXPRESSION         {output.val=new While(null, null, output3.val)}        |
+    'while' WS '(' WSML EXPRESSION WSML ')' WS EXPRESSION         {output.val=new While(output5.val, null, output9.val)} |
+    'do' WS EXPRESSION WS 'while' WS '(' WSML EXPRESSION WSML ')' {output.val=new While(null, output9.val, output3.val)} ;
+
+STMT_FOR : Expression =
+    'for' WS '(' WSML STMT_DECLARATION SEP EXPRESSION SEP STMT_ASSIGNMENT WSML ')' WS EXPRESSION {output.val=new For(output5.val, output7.val, output9.val, output13.val)} ;
+
+STMT_FOREACH : Expression =
+    'foreach' WS '(' WSML IDENT_DECLARATION WS IDENT_DECLARATION_B WS 'in' WS EXPRESSION WSML ')' WS EXPRESSION {output.val=new ForEach(output5.val, output7.val, output11.val, output15.val)} ;
+
+STMT_BREAK : Expression =
+    'break' {output.val=new FlowStatement(FlowStatement.Keyword.Break, null)} ;
+
+STMT_CONTINUE : Expression =
+    'continue' {output.val=new FlowStatement(FlowStatement.Keyword.Continue, null)} ;
+
+STMT_TRY : Expression =
+    'try' WS STMT_BLOCK WS STMT_CATCH_0 WS STMT_FINALLY_0 {output.val=new TryCatchFinally(output3.val, output5.val, output7.val)} ;
+    
+STMT_CATCH_0 : Expression =
+    'catch' WS '(' WSML IDENT_DECLARATION WSML ')' WS <to:output> STMT_BLOCK | ;
+
+STMT_FINALLY_0 : Expression =
+    'finally' WS <to:output> STMT_BLOCK | ;
+
+STMT_THROW : Expression =
+    'throw' WS EXPRESSION {output.val=new FlowStatement(FlowStatement.Keyword.Throw, output3.val)} ;
+
+STMT_ATOMIC : Expression =
+    'atomic' WS STMT_BLOCK {output.val=new Atomic(output3.val)} ;
+
+STMT_RETRY : Expression =
+    'retry' {output.val=new FlowStatement(FlowStatement.Keyword.Retry, null)} ;
+
+### Variable Declaration ###
+
+STMT_DECLARATION : Expression =
+    IDENT_DECLARATION WS OP_DECLARATION WS EXPRESSION {output.val = new Declaration(output3.val, output1.val, output5.val)} ;
+    
+OP_DECLARATION : Declaration.Operator =
+    ':===' {output.val = Declaration.Operator.DeclareConstant} |
+    ':=='  {output.val = Declaration.Operator.DeclareImmutableVariable} |
+    ':='   {output.val = Declaration.Operator.DeclareMutableVariable} ;
+
+IDENT_DECLARATION : IdentifierDeclaration =
+    IDENT WS EXPR_TYPE_0 {output.val = new IdentifierDeclaration(output1.val, output3.val)} ;
+
+IDENT_DECLARATION_B : IdentifierDeclaration =
+    ',' WS <to:output> IDENT_DECLARATION | ;
+
+EXPR_TYPE_0 : Expression =
+    <to:output> EXPR_TYPE | ;
+
+EXPR_TYPE : Expression =
+    '::' WS <to:output> EXPRESSION ;
+
+### Variable (or Reference) Assignment ###
+
+STMT_ASSIGNMENT : Expression =
+    EXPR_COAL WS {output.val = output1.val} <to:output> STMT_OPASSIGN_0 ;
+
+STMT_OPASSIGN_0 : Expression =
+    OP_ASSIGN WS EXPRESSION {output.val = new Assignment(output1.val, output.val, output3.val)} | ;
+
+OP_ASSIGN : Assignment.Operator =
+    '='   {output.val = Assignment.Operator.Assign} |
+    '??=' {output.val = Assignment.Operator.AssignCoal} |
+    '||=' {output.val = Assignment.Operator.AssignOr} |
+    '&&=' {output.val = Assignment.Operator.AssignAnd} |
+    '|='  {output.val = Assignment.Operator.AssignBitOr} |
+    '^='  {output.val = Assignment.Operator.AssignBitXor} |
+    '&='  {output.val = Assignment.Operator.AssignBitAnd} |
+    '++=' {output.val = Assignment.Operator.AssignConcat} |
+    '<<=' {output.val = Assignment.Operator.AssignShl} |
+    '>>=' {output.val = Assignment.Operator.AssignShr} |
+    '+='  {output.val = Assignment.Operator.AssignAdd} |
+    '-='  {output.val = Assignment.Operator.AssignSub} |
+    '*='  {output.val = Assignment.Operator.AssignMul} |
+    '/='  {output.val = Assignment.Operator.AssignDiv} |
+    '%='  {output.val = Assignment.Operator.AssignMod} |
+    '**=' {output.val = Assignment.Operator.AssignPow} ;
+
+### Null Coalescing Operator ###
+# The following binary infix operators are evaluated after the unary operators but before statements. 
+# All these operators associate from left to right (except assignment).
+#
+# Since left recursion is not allowed in LL grammars, defining a left-associative operator 
+# is a little tricky. A way around this is to pass the output of the left-hand side of
+# an expression to the right-hand side of the expression. This can be accomplished using
+# the <to:output> notation in the grammar. Additionally, we must be careful not to place
+# code blocks on the right end (as this would result in right-associative behaviour).
+
+EXPR_COAL : Expression =
+    <to:output> EXPR_OR WS <to:output> EXPR_OPCOAL ;
+    
+EXPR_OPCOAL : Expression =
+    '??' WS EXPR_OR {output.val = new BinaryOperator(BinaryOperator.Operator.Coal, output.val, output3.val)} WS <to:output> EXPR_OPCOAL | ;
+
+### Logical OR Operator ###
+# This operator associates from left to right.
+
+EXPR_OR : Expression =
+    <to:output> EXPR_AND WS <to:output> EXPR_OPOR ;
+
+EXPR_OPOR : Expression =
+    '||' WS EXPR_AND {output.val = new BinaryOperator(BinaryOperator.Operator.Or, output.val, output3.val)} WS <to:output> EXPR_OPOR | ;
+
+### Logical AND Operator ###
+# This operator associates from left to right.
+
+EXPR_AND : Expression =
+    <to:output> EXPR_BITOR WS <to:output> EXPR_OPAND ;
+
+EXPR_OPAND : Expression =
+    '&&' WS EXPR_BITOR {output.val = new BinaryOperator(BinaryOperator.Operator.And, output.val, output3.val)} WS <to:output> EXPR_OPAND | ;
+
+### Bitwise OR Operator ###
+# This operator associates from left to right.
+
+EXPR_BITOR : Expression =
+    <to:output> EXPR_BITXOR WS <to:output> EXPR_OPBITOR ;
+
+EXPR_OPBITOR : Expression =
+    '|' WS EXPR_BITXOR {output.val = new BinaryOperator(BinaryOperator.Operator.BitOr, output.val, output3.val)} WS <to:output> EXPR_OPBITOR | ;
+
+### Bitwise XOR Operator ###
+# This operator associates from left to right.
+
+EXPR_BITXOR : Expression =
+    <to:output> EXPR_BITAND WS <to:output> EXPR_OPBITXOR ;
+
+EXPR_OPBITXOR : Expression =
+    '^' WS EXPR_BITAND {output.val = new BinaryOperator(BinaryOperator.Operator.BitXor, output.val, output3.val)} WS <to:output> EXPR_OPBITXOR | ;
+
+### Bitwise AND Operator ###
+# This operator associates from left to right.
+
+EXPR_BITAND : Expression =
+    <to:output> EXPR_CMP WS <to:output> EXPR_OPBITAND ;
+
+EXPR_OPBITAND : Expression =
+    '&' WS EXPR_CMP {output.val = new BinaryOperator(BinaryOperator.Operator.BitAnd, output.val, output3.val)} WS <to:output> EXPR_OPBITAND | ;
+
+### Comparision Operators ###
+# These operators have equal precedence and associate from left to right.
+
+EXPR_CMP : Expression =
+    <to:output> EXPR_REL WS <to:output> EXPR_OPCMP ;
+
+EXPR_OPCMP : Expression =
+    OP_CMP WS EXPR_REL {output.val = new BinaryOperator(output1.val, output.val, output3.val)} WS <to:output> EXPR_OPCMP | ;
+
+OP_CMP : BinaryOperator.Operator =
+    '<=>' {output.val = BinaryOperator.Operator.Compare} |
+    '=='  {output.val = BinaryOperator.Operator.Equal} |
+    '!='  {output.val = BinaryOperator.Operator.NotEqual} ;
+
+### Relational Operators ###
+# These operators have equal precedence and associate from left to right.
+
+EXPR_REL : Expression =
+    <to:output> EXPR_CAT WS <to:output> EXPR_OPREL ;
+
+EXPR_OPREL : Expression =
+    OP_REL WS EXPR_CAT {output.val = new BinaryOperator(output1.val, output.val, output3.val)} WS <to:output> EXPR_OPREL | ;
+
+OP_REL : BinaryOperator.Operator =
+    '<='  {output.val = BinaryOperator.Operator.LessOrEqual} |
+    '<'   {output.val = BinaryOperator.Operator.Less} |
+    '>='  {output.val = BinaryOperator.Operator.GreaterOrEqual} |
+    '>'   {output.val = BinaryOperator.Operator.Greater} ;
+
+### Concat Operator ###
+# This operator associates from left to right.
+
+EXPR_CAT : Expression =
+    <to:output> EXPR_SHIFT WS <to:output> EXPR_OPCAT ;
+
+EXPR_OPCAT : Expression =
+    '++' WS EXPR_SHIFT {output.val = new BinaryOperator(BinaryOperator.Operator.Concat, output.val, output3.val)} WS <to:output> EXPR_OPCAT | ;
+
+### Shifting Operators ###
+# These operators have equal precedence and associate from left to right.
+
+EXPR_SHIFT : Expression =
+    <to:output> EXPR_ADD WS <to:output> EXPR_OPSHIFT ;
+    
+EXPR_OPSHIFT : Expression =
+    OP_SHIFT WS EXPR_ADD {output.val = new BinaryOperator(output1.val, output.val, output3.val)} WS <to:output> EXPR_OPSHIFT | ;
+    
+OP_SHIFT : BinaryOperator.Operator =
+    '<<'  {output.val = BinaryOperator.Operator.Shl} |
+    '>>'  {output.val = BinaryOperator.Operator.Shr} ;
+
+### Additive Operators ###
+# These operators have equal precedence and associate from left to right.
+
+EXPR_ADD : Expression = 
+    <to:output> EXPR_MUL WS <to:output> EXPR_OPADD ;
+    
+EXPR_OPADD : Expression =
+    OP_ADD WS EXPR_MUL {output.val = new BinaryOperator(output1.val, output.val, output3.val)} WS <to:output> EXPR_OPADD | ;
+    
+OP_ADD : BinaryOperator.Operator =
+    '+'   {output.val = BinaryOperator.Operator.Add} |
+    '-'   {output.val = BinaryOperator.Operator.Sub} ;
+
+### Multiplicative Operators ###
+# These operators have equal precedence and associate from left to right.
+
+EXPR_MUL : Expression =
+    <to:output> EXPR_POW WS <to:output> EXPR_OPMUL ;
+    
+EXPR_OPMUL : Expression =
+    OP_MUL WS EXPR_POW {output.val = new BinaryOperator(output1.val, output.val, output3.val)} WS <to:output> EXPR_OPMUL | ;
+    
+OP_MUL : BinaryOperator.Operator =
+    '*'   {output.val = BinaryOperator.Operator.Mul} |
+    '/'   {output.val = BinaryOperator.Operator.Div} |
+    '%'   {output.val = BinaryOperator.Operator.Mod} ;
+
+### Power Operator ###
+# This operator associates from left to right.
+
+EXPR_POW : Expression =
+    <to:output> EXPR_PREFIX WS <to:output> EXPR_OPPOW ;
+
+EXPR_OPPOW : Expression =
+    '**' WS EXPR_PREFIX {output.val = new BinaryOperator(BinaryOperator.Operator.Pow, output.val, output3.val)} WS <to:output> EXPR_OPPOW | ;
+
+### Unary prefix operators ###
+# The unary operators are evaluated before the binary operators, they associate from right to left.
+
+EXPR_PREFIX : Expression =
+    PREFIX_OP WS EXPR_PREFIX {output.val = new UnaryOperator(output1.val, output3.val).propagateConst(session)} |
+    <to:output> EXPR_CALL ;
+
+PREFIX_OP : UnaryOperator.Operator =
+    '!' {output.val = UnaryOperator.Operator.Not} |
+    '-' {output.val = UnaryOperator.Operator.Neg} |
+    '~' {output.val = UnaryOperator.Operator.BitNot} ;
+
+### Call Operator ###
+# Calls, member and child selection are evaluated first, before other operators.
+# These operators have equal precedence and associate from left to right.
+
+EXPR_CALL : Expression =
+    <to:output> EXPR_LEAF WS <to:output> EXPR_OPCALL ;
+
+EXPR_OPCALL : Expression =
+    '(' WSML CALL_ARGS ')'   {output.val = new Call(output.val, output3.val)} WS <to:output> EXPR_OPCALL |
+    '.' WS IDENT             {output.val = new BinaryOperator(BinaryOperator.Operator.Child, output.val, new Constant(output3.val))} WS <to:output> EXPR_OPCALL |
+    '[' WS EXPRESSION WS ']' {output.val = new BinaryOperator(BinaryOperator.Operator.Child, output.val, output3.val)}               WS <to:output> EXPR_OPCALL |
+    '[*]' WS                 {output.val = new ReferenceContent(output.val)}                                                         WS <to:output> EXPR_OPCALL | ;
+
+CALL_ARGS : ArrayList<Expression> =
+    EXPRESSION {appendT(output, output1.val)} <to:output> CALL_TAIL | ;
+
+CALL_TAIL : ArrayList<Expression> =
+    SEP EXPRESSION {appendT(output, output2.val)} <to:output> CALL_TAIL | WSML ;
+
+### Leaf Nodes ###
+# At the bottom level, we have brackets, symbols (variables and constants) and literals (values).
+# TODO: EXPR_FUNC (a.k.a lambda) should probably be near the assignment instead of here.
+
+EXPR_LEAF : Expression =
+    IDENT     {output.val = new Variable(output1.val)} |
+    EXPR_FUNC {output.val = output1.val} |
+    '(' WSML <to:output> EXPRESSION WSML ')' |
+    <to:output> VALUE ;
+
+EXPR_FUNC : FunctionExpression =
+    '(' WSML FUNC_ARGS ')' WS '->' WS EXPRESSION {output.val = new FunctionExpression(false, output3.val, output8.val)} ;
+
+FUNC_ARGS : ArrayList<IdentifierDeclaration> =
+    IDENT_DECLARATION {appendT(output, output1.val)} <to:output> FUNC_TAIL | ;
+
+FUNC_TAIL : ArrayList<IdentifierDeclaration> =
+    SEP IDENT_DECLARATION {appendT(output, output2.val)} <to:output> FUNC_TAIL | WSML ;

@@ -1,0 +1,2 @@
+#!/bin/sh
+java -Djava.util.logging.config.file=logging.properties -jar target/styx-app-0.1-SNAPSHOT-withdeps.jar $*

@@ -39,7 +39,7 @@ public class WebServer {
                     // This should work exactly as if the WAR file was deployed to Jetty or any other JEE compliant Servlet container.
                     System.out.println("Executing WAR file: " + warBase);
                 } else {
-                    // We have been invoked from "java -cp target/classes styx.web.styxWebServer". The WAR file has not yet been packaged.
+                    // We have been invoked from "java -cp target/classes styx.web.WebServer". The WAR file has not yet been packaged.
                     // Therefore, we let embedded Jetty serve the source webapp directory. This way, Servlet classes annotated with
                     // @WebServlet are not discovered automatically, we have do define them in WEB-INF/web.xml.
                     warBase = "src/main/webapp";

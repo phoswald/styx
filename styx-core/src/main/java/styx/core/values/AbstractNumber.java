@@ -1,7 +1,7 @@
 package styx.core.values;
 
 import styx.Decimal;
-import styx.Number;
+import styx.Numeric;
 import styx.StyxRuntimeException;
 import styx.Value;
 
@@ -15,7 +15,7 @@ import styx.Value;
  * conversions between some representations (i.e. double to int) immediately fail.
  *
  */
-abstract class AbstractNumber extends AbstractText implements Number {
+abstract class AbstractNumber extends AbstractText implements Numeric {
 
     private static final int  LONG_LIMIT_EXP = Long.toString(Long.MAX_VALUE).length() - 1; // the largest exponent that can possibly fit.
     private static final long LONG_LIMIT_ADD = Long.MIN_VALUE;      // the largest value to which we can add 10 without overflow (but negative)
@@ -42,7 +42,7 @@ abstract class AbstractNumber extends AbstractText implements Number {
     }
 
     @Override
-    public Number asNumber() {
+    public Numeric asNumber() {
         return this;
     }
 
@@ -87,7 +87,7 @@ abstract class AbstractNumber extends AbstractText implements Number {
     }
 
     @Override
-    public Number normalize() {
+    public Numeric normalize() {
         return this; // overridden by ConcreteNumberDenormalized
     }
 
@@ -211,7 +211,7 @@ abstract class AbstractNumber extends AbstractText implements Number {
      * @param b the 2nd value to compare.
      * @return -1 if a < b, +1 if a > b or 0 if a == b
      */
-    private static int compareNumber(Number a, Number b) {
+    private static int compareNumber(Numeric a, Numeric b) {
         if(a == b) {
             return 0;
         }
@@ -236,7 +236,7 @@ abstract class AbstractNumber extends AbstractText implements Number {
      * @param b the 2nd value to compare.
      * @return -1 if a < b, +1 if a > b or 0 if a == b
      */
-    private static int compareNumeric(Number a, Number b) {
+    private static int compareNumeric(Numeric a, Numeric b) {
         // detect a few past paths
         if(a.isInteger()) {
             if(/*b.isInteger() || */ b.isLong()) {
