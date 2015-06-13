@@ -1,0 +1,29 @@
+
+STYX for Java
+=============
+
+Requirements:
+- JDK / JRE 8   (required)
+- Maven 3.2.3   (required)
+- Eclipse 4.4.1 (recommended)
+
+Build:
+- $ mvn clean install
+
+Parser Generator
+================
+
+- Requires RSPT, the Really Simple Parser Tool
+- $ rspt -gen=java styx-core/src/main/grammar.rspt.txt styx-core/src/main/java/styx/core/parser/Parser.java
+
+Running
+=======
+
+Execution (styx-app):
+- $ java -jar target/styx-app-1.0-SNAPSHOT-withdeps.jar
+- $ ./styx
+
+Execution (styx-web):
+- $ java -jar target/styx-web-1.0-SNAPSHOT.war
+- $ ./styxw
+

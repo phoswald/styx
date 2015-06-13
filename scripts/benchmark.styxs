@@ -1,0 +1,32 @@
+console.write("Hello, World!")
+
+r := [/benchmark]
+[/][*] = [ ]
+r[*] = [ ]
+
+console.write("[press return to run]")
+console.read()
+
+beg := time.current_millis()
+
+atomic {
+    n :=== 10
+    x := [ ]
+    for(i := 1, i <= n, i+=1) {
+        y := [ ]
+        for(j := 1, j <= n, j+=1) {
+            y = [ y, "Inner " ++ j, i * j ]
+        }
+        x = [ x, "Outer " ++ i, y ]
+    }
+    r[*] = x
+}
+
+end := time.current_millis()
+console.write("It took " ++ (end-beg) ++ " ms.") /* TODO interpolation */ 
+
+console.write("Dumping...")
+file.write([/][*], "../data/benchmark_dump.udm", true)
+
+console.write("That's all folks!")
+

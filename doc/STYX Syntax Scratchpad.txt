@@ -1,0 +1,251 @@
+Keywords and operators
+    - no keywords and a very limited syntax for literals
+    - a special syntax to define functions within literals
+    - many operators to define expressions 
+    - some keywords within function definitions 
+
+Comments
+
+    // ABC              Single line comment
+    /* ABC */           Multi line comment
+
+Literals
+
+    -123                Number literal, negative, integral
+    0                   Number literal, zero, integral
+    123                 Number literal, positive, integral
+    1234.56             Number literal, positive, fractional
+    1.234E3             Number literal, exponential
+
+    0x012345            Binary literal
+    0x7F88              Binary literal
+    0xCAFEBABE          Binary literal
+
+    foo                 String literal, unquoted (only as a key)
+    foo2                String literal, unquoted (only as a key)
+    "foo"               String literal, quoted
+    "hello world"       String literal, quoted
+    "multi\nline"       String literal, quoted, with escape sequences
+
+    [/]                 Root reference literal
+    [/A/B/C]            Reference literal
+
+    [ A: B, C: D ]      Complex literal (map syntax)
+    [ A, B ]            Complex literal (list syntax: map with integer keys 1, 2, 3, ...
+
+    @A B                Tag literal
+
+    :: T                Type literal
+
+    -> F                Function literal
+
+Operators (in order of precedence)
+
+    A()                 Function call without arguments
+    A(B,C)              Function call with arguments
+    A.B                 Any: Member selection (static, typed)
+    A.(B)               Any: Member selection (dynamic, typed)
+    A[B]                Reference: Child selection (dynamic, untyped)
+                        Complex:   Child selection (dynamic, untyped)
+                        Tag:       Child selection (dynamic, untyped)
+    A[*]                Reference: Content access (also on right-hand side of assignment)
+
+
+    !A                  Boolean: Not
+    -A                  Numeric: Negation
+    ~A                  ??? Integral: Bitwise Negation
+
+
+    A ** B              Numeric: Exponentiation
+    A * B               Numeric: Multiplication
+    A / B               Numeric: Division
+    A % B               Numeric: Modulo
+    A + B               Numeric: Addition
+    A - B               Numeric: Subtraction
+
+
+    A << B              ??? Integral: Shift left
+    A >> B              ??? Integral: Shift right
+
+
+    A ++ B              Text: Concatenation
+                        List: Concatenation
+
+
+    A <= B              Any: Less than or equal
+    A <  B              Any: Less than
+    A >= B              Any: Greater than or equal
+    A >  B              Any: Greater than
+    A == B              Any: Equality
+    A != B              Any: Inequality
+    A <=> B             Any: Comparision (A == B or A < B or A > B, returns -1 or 0 or +1)
+
+    A: T                Type designation (in C++, C# between relational and equality)
+
+
+    A & B               Integral: Bitwise And
+    A ^ B               Integral: Bitwise Xor
+    A | B               Integral: Bitwise Or
+
+
+    A && B              Boolean: And
+                        Complex: Intersection
+    A || B              Boolean: Or
+                        Complex: Union
+
+
+    A ?? B              Any: Null coalescing (if A != null then A else B)
+
+    (A, B) -> E         Function definition (lambda)
+    (A)                 Parenthesis
+
+Statements (Assignment)
+
+    V = E               Variable assignment
+    R[*] = E            Reference assignement
+
+    V **= E             Assignments combined with binary operators
+    V *= E
+    V /= E
+    V %= E
+    V += E
+    V -= E
+    V <<= E
+    V >>= E
+    V ++= E
+    V &= E
+    V ^= E
+    V |= E
+    V &&= E
+    V ||= E
+    V ??= E
+    V = E
+    V = E
+
+Statements (Declaration)
+
+    A := B              Mutable variable declaration and initialisation
+    A :== B             Immutable variable declaration and initialisation
+    A :=== C            Constant declaration and initialisation
+
+Statements (Block and Control Flow)
+
+    { A, B }            Block statement (part of control flow statements below)
+
+    return E
+    return
+
+    yield E
+    
+    if(E) ...
+    else ...
+
+    switch(E) {                  
+        case(E) ...     ??? Syntax and semantics for fall-through
+        else ...        ??? Syntax and semantics for default
+    }
+
+    loop ...
+    while(E) ...
+    do ... while(E)
+
+    for(I,E,S) ...
+
+    foreach(V in E) ...
+    foreach(K,V in E) ...
+
+    break
+
+    continue
+
+    try { }
+    catch { }           ??? Syntax and semantics for catching types
+    finally { }
+
+    throw E
+
+    atomic { }          Transaction
+    retry               Wait/Monitor in transaction
+
+
+Undefined, Unused
+
+    < >                 Another kind of braces
+
+    #
+    ;
+    '                   Could be used for quoted identifiers
+    `
+    ¬
+    $
+    £
+
+    _                   Curently a valid identifier
+    .                   Could be used as prefix
+    ..                  Could be used as parent
+
+Ideas (Optional Chaining)
+
+    func?(x)
+    ident?.x
+    ident?[x]
+
+Ideas (Typing)
+
+    A :: B              Could be used for casting ("as")
+    A ::? B             Could be used for type checking ("instanceof")
+    A :? B              Could be used for type checking ("instanceof")
+
+
+Ideas (Actors or Coroutines)
+
+    <-
+    <--
+    <---
+
+    acor <- message     Sending a message could be like a function call
+    <- promise          Waits on a future
+
+Ideas (Put syntax)
+
+    A[B] = C            A ||= [B:C] (union of maps, fails if C==null)
+
+Ideas (Others)
+
+    [<<]
+    [>>]
+    [..]
+
+=============================================================================
+
+    var := expr                                 OK
+    var : type := expr                          OK
+    var := expr : type                          OK
+
+    sum := 4 + 5
+    sum := 4 + 5 : int
+    sum : int := 4 + 5
+
+    pair := :: @complex [ a, b ]                Type declaration (complex) 
+
+    add := (a, b) -> a + b                      Function definiton, untyped
+    add := (a: int, b: int): int -> a + b       Function definiton, typed
+    add := (a: int, b: int) -> a + b: int       Function definiton, typed
+
+=============================================================================
+
+Sonar STYX Core:
+- Lines of code: 10'308   9'957  10'001   9'949   9'334   9'871
+- Lines:         13'156  12'682  12'813  12'759  12'126
+- Statements:     4'854   4'696           4'689   4'297
+- Files:            117     114             114     114
+
+parser:            3968   3'831   3'857   3'805   3'147   3'135
+internal:          1835   1'826   1'826   1'826   1'826
+expressions:       1913   1'757   1'775   1'775   1'818
+internal.sessions:  662     662             662     662
+core.intrinsics:    387     386             386     386
+core.utils:         403     382             382     382   1'028
+
+Grammar lines:      625     610     614     599     495     494
+

@@ -1,0 +1,213 @@
+
+console.write("Preparing...")
+[/][*] = [ ]
+
+console.write("Users...")
+[/users][*] = [
+    [/] : [ ]
+    philip: [
+        name: "Philip Oswald"
+        birth: "1977-10-26"
+        gender: "M"
+    ]
+]
+
+console.write("Products...")
+[/products][*] = [
+    P1: [
+        name: "Product 1"
+        price: 123
+    ]
+    P2: [
+        name: "Product 1"
+        price: 123
+    ]
+]
+
+console.write("Customers...")
+[/customers][*] = [
+    C1: [
+        name: "Customer One"
+        credit: 1000
+        address: [
+          street: "Street 1"
+          city: "Springfield"
+          zip: 1234
+          country: "Switzerland"
+        ]
+    ]
+    C2: [
+        name: "Customer Two"
+        credit: 100
+        address: [
+          street: "Street 2"
+          city: "Springfield"
+          zip: 1234
+          country: "Switzerland"
+        ]
+    ]
+]
+
+console.write("Web Pages...")
+[/urls][*] = [
+    Text1: @StaticText [
+        ContentType: "text/plain"
+        Body: "Hello, World!"
+    ]
+    Binary1: @StaticBinary [
+        ContentType: "text/plain"
+        Body: 0x41424241
+    ]
+    Html1: @StaticHtml [
+        ContentType: "text/html"
+        Body: @html [
+            @head [
+                @title "This is the title"
+            ]
+            @body [
+                @h1 "This is the heading"
+                @p "This is a paragraph."
+                @p [
+                    "This is another "
+                    "longer paragraph."
+                ]
+                @p [
+                    "This is a paragraph with "
+                    @u "mixed"
+                    " content."
+                ]
+                @p [
+                    "This is a paragraph with "
+                    @span [
+                        @"#style" "color: red"
+                        "red"
+                    ]
+                    " content."
+                ]
+            ]
+        ]
+    ]
+    Html2: @StaticHtml [
+        ContentType: "text/html"
+        Body: @html [
+            @head [
+                @title "Welcome to STYX"
+            ]
+            @body [
+                @h1 "Welcome to STYX"
+                @p "STYX is enabled by:"
+                @table [
+                    @tr [
+                        @td [ @img [ @"#src" "JavaLogo" ] ] // TODO: make [ ] optional after @td
+                        @td [
+                            @a [ @"#href" "http://en.wikipedia.org/wiki/Java_(programming_language)", "Java" ]
+                            " is, as of 2014, one of the most popular programming languages in use, particularly for client-server web applications, with a reported 9 million developers. "
+                            "Java was originally developed by James Gosling at Sun Microsystems (which has since merged into Oracle Corporation) and released in 1995 as a core component of Sun Microsystems' Java platform."
+                        ]
+                    ]
+                    @tr [
+                        @td [ @img [ @"#src" "SqliteLogo" ] ] // TODO: make [ ] optional after @td
+                        @td [
+                            @a [ @"#href" "http://en.wikipedia.org/wiki/SQLite", "SQLite" ]
+                            " is a software library that implements a self-contained, serverless, zero-configuration, transactional SQL database engine. "
+                            "SQLite is the most widely deployed SQL database engine in the world. The source code for SQLite is in the public domain."
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+]
+
+[/urls/Dynamic1][*] = @Dynamic [
+    Func: (ref, props, params, headers, cookies) -> {
+        return @StaticHtml [
+            ContentType: "text/html"
+            Body: @html [
+                @head [
+                    @title "This is the title"
+                ]
+                @body [
+                    @p "Hello, user " ++ ([/users/philip/name][*]) ++ "!" /* TODO interpolation */
+                    @p "The current time is " ++ (time.current_text()) ++ " and you are from " ++ (props.remote_host) ++ "." /* TODO interpolation */
+                ]
+            ]
+        ]
+    }
+]
+
+[/urls/Dynamic2][*] = @Dynamic [
+    Func: (ref, props, params, headers, cookies) -> {
+        return @StaticHtml [
+            ContentType: "text/html"
+            Body: @html [
+                @head [
+                    @title "HTTP request test"
+                    @style "p { font-weight: bold}"
+                ]
+                @body [
+                    @h1 "HTTP request test"
+                    @p "Reference:"
+                    @pre session.serialize(ref, true)
+                    @p "Request properties:"
+                    @pre session.serialize(props, true)
+                    @p "Request parameters:"
+                    @pre session.serialize(params, true)
+                    @p "Request headers:"
+                    @pre session.serialize(headers, true)
+                    @p "Request cookies:"
+                    @pre session.serialize(cookies, true)
+                ]
+            ]
+            Headers: [
+                @"X-STYX-Header1" "Value 1"
+                @"X-STYX-Header2" "Value 2"
+            ]
+            Cookies: [
+                [
+                    name: "MyCookieName"
+                    value: "MyCookieValue(" ++ (time.current_millis()) ++ ")" /* TODO interpolation */
+                    comment: "ThisIsAComment"
+                    max_age: 120
+                    http_only: true
+                ]
+            ]
+        ]
+    }
+]
+
+[/urls/JavaLogo][*] = @StaticBinary [
+    ContentType: "image/png"
+    Body: file.read_binary("../scripts/java_logo.png")
+]
+
+[/urls/SqliteLogo][*] = @StaticBinary [
+    ContentType: "image/gif"
+    Body: file.read_binary("../scripts/sqlite_logo.gif")
+]
+
+[/urls/index][*] = @Dynamic [
+    Func: (ref, props, params, headers, cookies) -> {
+        return @StaticHtml [
+            ContentType: "text/html"
+            Body: @html [
+                @head [
+                    @title "STYX Site Index"
+                ]
+                @body [
+                    @h1 "STYX Site Index"
+                    // TODO get rid of @div
+                    @div foreach(v in session.browse([/urls])) yield @p [
+                        @a [ @"#href" v, v ]
+                        " "
+                        @a [ @"#href" "../rest/urls/" ++ v, "[Source]" ]
+                    ]
+                ]
+            ]
+        ]
+    }
+]
+
+console.write("Dumping...")
+file.write([/][*], "../data/database_dump.udm", true)
+
