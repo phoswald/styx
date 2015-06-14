@@ -69,7 +69,7 @@ public abstract class TestAnySession extends TestBase {
         try(Session session = sf.createSession()) {
             try(ByteArrayOutputStream stm = new ByteArrayOutputStream()) {
                 session.serialize(session.number(1234), stm, false);
-                assertArrayEquals(new byte[] { '1', '2', '3', '4' }, stm.toByteArray());
+                assertArrayEquals(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF, '1', '2', '3', '4' }, stm.toByteArray());
             }
         }
     }
@@ -77,7 +77,7 @@ public abstract class TestAnySession extends TestBase {
     @Test
     public void testDeserializeBytes() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
-            try(ByteArrayInputStream stm = new ByteArrayInputStream(new byte[] { '1', '2', '3', '4' })) {
+            try(ByteArrayInputStream stm = new ByteArrayInputStream(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF, '1', '2', '3', '4' })) {
                 assertEquals(1234, session.deserialize(stm).asNumber().toLong());
             }
         }

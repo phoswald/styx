@@ -1,5 +1,6 @@
 package styx.core.utils;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Objects;
 
 import javax.json.Json;
+import javax.json.JsonException;
 import javax.json.stream.JsonGenerator;
 import javax.json.stream.JsonGeneratorFactory;
 import javax.json.stream.JsonParser;
@@ -39,25 +41,26 @@ import styx.Value;
  */
 public final class JsonSerializer {
 
-    private static final JsonGeneratorFactory generatorDefault = Json.createGeneratorFactory(null);
-    private static final JsonGeneratorFactory generatorIndent  = Json.createGeneratorFactory(Collections.singletonMap(JsonGenerator.PRETTY_PRINTING, "1"));
+    private static final JsonGeneratorFactory GENERATOR_DEFAULT = Json.createGeneratorFactory(null);
+    private static final JsonGeneratorFactory GENERATOR_INDENT = Json.createGeneratorFactory(Collections.singletonMap(JsonGenerator.PRETTY_PRINTING, "1"));
+
+    private static final byte[] BOM = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
 
     /**
      * Serializes an arbitrary UDM value into an OutputStream.
      * @param val the value, can be null.
      * @param stm the OutputStream, receives an JSON document encoded as UTF-8.
      * @param indent true if the output shall be formatted prettily.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given stream is null.
+     * @throws StyxException if an JSON or IO related error occurs.
      */
     public static void serialize(Value val, OutputStream stm, boolean indent) throws StyxException {
-        // TODO: The UTF-8 BOM is not supported by java.lang.*, java.io.* et al
-        //       This would be very useful on systems with a character set other than UTF-8!
-        // stm.write(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF });
         Objects.requireNonNull(stm);
-        try(JsonGenerator generator = (indent ? generatorIndent : generatorDefault).createGenerator(stm)) {
-            serialize(val, generator);
-        } catch (RuntimeException e) {
+        try {
+            stm.write(BOM);
+            try(JsonGenerator generator = (indent ? GENERATOR_INDENT : GENERATOR_DEFAULT).createGenerator(stm)) {
+                serialize(val, generator);
+            }
+        } catch (JsonException | IOException e) {
             throw new StyxException("Failed to serialize as JSON.", e);
         }
     }
@@ -67,14 +70,13 @@ public final class JsonSerializer {
      * @param val the value, can be null.
      * @param stm the Writer, receives a JSON document.
      * @param indent true if the output shall be formatted prettily.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given writer is null.
+     * @throws StyxException if an JSON or IO related error occurs.
      */
     public static void serialize(Value val, Writer stm, boolean indent) throws StyxException {
         Objects.requireNonNull(stm);
-        try(JsonGenerator generator = (indent ? generatorIndent : generatorDefault).createGenerator(stm)) {
+        try(JsonGenerator generator = (indent ? GENERATOR_INDENT : GENERATOR_DEFAULT).createGenerator(stm)) {
             serialize(val, generator);
-        } catch (RuntimeException e) {
+        } catch (JsonException e) {
             throw new StyxException("Failed to serialize as JSON.", e);
         }
     }
@@ -170,15 +172,14 @@ public final class JsonSerializer {
      * @param session the session to be used to create values.
      * @param stm the InputStream, must contain a JSON document.
      * @return the deserialized UDM value, can be null.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given session or stream is null.
+     * @throws StyxException if an JSON or IO related error occurs, including format violations.
      */
     public static Value deserialize(Session session, InputStream stm) throws StyxException {
         Objects.requireNonNull(session);
         Objects.requireNonNull(stm);
         try(JsonParser parser = Json.createParser(stm)) {
             return deserialize(session, parser);
-        } catch (RuntimeException | StyxException e) {
+        } catch (JsonException | StyxException e) {
             throw new StyxException("Failed to deserialize from JSON.", e);
         }
     }
@@ -188,15 +189,14 @@ public final class JsonSerializer {
      * @param session the session to be used to create values.
      * @param stm the Reader, must contain a JSON document.
      * @return the deserialized UDM value, can be null.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given session or reader is null.
+     * @throws StyxException if an JSON or IO related error occurs, including format violations.
      */
     public static Value deserialize(Session session, Reader stm) throws StyxException {
         Objects.requireNonNull(session);
         Objects.requireNonNull(stm);
         try(JsonParser parser = Json.createParser(stm)) {
             return deserialize(session, parser);
-        } catch (RuntimeException | StyxException e) {
+        } catch (JsonException | StyxException e) {
             throw new StyxException("Failed to deserialize from JSON.", e);
         }
     }

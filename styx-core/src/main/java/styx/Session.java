@@ -121,7 +121,6 @@ public interface Session extends AutoCloseable {
      * @param definition the type definition, must not be null.
      * @return a type instance, never null.
      * @throws StyxException if the given definition is not valid.
-     * @throws NullPointerException if the given definition is null.
      */
     public Type type(Value definition) throws StyxException;
 
@@ -130,7 +129,6 @@ public interface Session extends AutoCloseable {
      * @param definition the function definition, must not be null.
      * @return a function instance, never null.
      * @throws StyxException if the given definition is not valid.
-     * @throws NullPointerException if the given definition is null.
      */
     public Function function(Value definition) throws StyxException;
 
@@ -141,7 +139,6 @@ public interface Session extends AutoCloseable {
      * @param ref the reference, whose value is to be read, must not be null.
      * @return the current value of the given reference, or null if the given reference currently has no value.
      * @throws StyxException if a storage access occurs, or if the given reference does not exist.
-     * @throws NullPointerException if the given reference is null.
      */
     public Value read(Reference ref) throws StyxException;
 
@@ -150,7 +147,6 @@ public interface Session extends AutoCloseable {
      * @param ref the reference, whose value is to be written, must not be null.
      * @param val the new value for the given reference, can be null if the current value is to be removed.
      * @throws StyxException if a storage access occurs, or if the given reference does not exist.
-     * @throws NullPointerException if the given reference is null.
      */
     public void write(Reference ref, Value val) throws StyxException;
 
@@ -159,7 +155,6 @@ public interface Session extends AutoCloseable {
      * @param ref the reference, whose children are to be browsed, must not be null.
      * @return the sorted list of the given reference's children's keys.
      * @throws StyxException if a storage access occurs, or if the given reference does not exist.
-     * @throws NullPointerException if the given reference is null.
      */
     public List<Value> browse(Reference ref) throws StyxException;
 
@@ -172,7 +167,6 @@ public interface Session extends AutoCloseable {
      * @param forward true for normal order (from first to last), false for reverse order (from last to first)
      * @return the sorted and optionally restricted list of the given reference's children's keys.
      * @throws StyxException if a storage access occurs, or if the given reference does not exist.
-     * @throws NullPointerException if the given reference is null.
      */
     public List<Value> browse(Reference ref, Value after, Value before, Integer maxResults, boolean forward) throws StyxException;
 

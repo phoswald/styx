@@ -19,7 +19,7 @@ import styx.core.intrinsics.ConsoleIntrinsics;
 public class Application {
 
     private static String sessionConfigFile  = System.getProperty("styx.app.session.config", "system.styx");
-    private static String sessionFactoryName = System.getProperty("styx.app.session.factory");
+    private static String sessionFactoryName = System.getProperty("styx.app.session.factory", "");
 
     public static void main(String args[]) {
         try {
@@ -54,7 +54,7 @@ public class Application {
 
             SystemConfiguration.load(sessionConfigFile);
             System.out.println("Loaded STYX configuration from: " + sessionConfigFile);
-            System.out.println("Using STYX session factory: " + (sessionFactoryName == null || sessionFactoryName.length() == 0 ? "<default>" : sessionFactoryName));
+            System.out.println("Using STYX session factory: " + sessionFactoryName);
 
             SessionFactory factory = SessionManager.lookupSessionFactory(sessionFactoryName);
             for(String script : scripts) {

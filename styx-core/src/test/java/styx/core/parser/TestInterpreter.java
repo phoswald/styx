@@ -526,7 +526,7 @@ public class TestInterpreter {
 
     @Test
     public void testFunctionUserCompiled() throws StyxException, IOException {
-        AbstractSessionFactory sf2 = (AbstractSessionFactory /* TODO */) SessionManager.createMemorySessionFactory(false);
+        AbstractSessionFactory sf2 = (AbstractSessionFactory /* TODO (cleanup) AbstractSessionFactory vs. SessionFactory? */) SessionManager.createMemorySessionFactory(false);
         try(Session session = sf2.createSession()) {
             Complex def = new CompiledFunction(sf2.getRegistry(), "test_1", Determinism.PURE, 2) {
                 @Override

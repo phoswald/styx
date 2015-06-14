@@ -1,5 +1,6 @@
 package styx.core.utils;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
@@ -9,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import javax.xml.stream.FactoryConfigurationError;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -44,22 +44,24 @@ import styx.Value;
  */
 public final class XmlSerializer {
 
+    private static final XMLInputFactory INPUT_FACTORY = XMLInputFactory.newFactory();
+    private static final XMLOutputFactory OUTPUT_FACTORY = XMLOutputFactory.newFactory();
+
+    private static final byte[] BOM = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
+
     /**
      * Serializes an arbitrary UDM value into an OutputStream.
      * @param val the value, can be null.
      * @param stm the OutputStream, receives an XML document encoded as UTF-8.
      * @param indent true if the output shall be formatted prettily.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given stream is null.
+     * @throws StyxException if an XML or IO related error occurs.
      */
     public static void serialize(Value val, OutputStream stm, boolean indent) throws StyxException {
         Objects.requireNonNull(stm);
         try {
-            // TODO: The UTF-8 BOM is not supported by java.lang.*, java.io.* et al
-            //       This would be very useful on systems with a character set other than UTF-8!
-            // stm.write(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF });
-            serialize(val, XMLOutputFactory.newInstance().createXMLStreamWriter(stm, StandardCharsets.UTF_8.name()), indent, "utf-8");
-        } catch (RuntimeException | XMLStreamException | FactoryConfigurationError e) {
+            stm.write(BOM);
+            serialize(val, OUTPUT_FACTORY.createXMLStreamWriter(stm, StandardCharsets.UTF_8.name()), indent, "utf-8");
+        } catch (XMLStreamException | IOException e) {
             throw new StyxException("Failed to serialize as XML.", e);
         }
     }
@@ -69,14 +71,13 @@ public final class XmlSerializer {
      * @param val the value, can be null.
      * @param stm the Writer, receives an XML document with no encoding.
      * @param indent true if the output shall be formatted prettily.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given writer is null.
+     * @throws StyxException if an XML or IO related error occurs.
      */
     public static void serialize(Value val, Writer stm, boolean indent) throws StyxException {
         Objects.requireNonNull(stm);
         try {
-            serialize(val, XMLOutputFactory.newInstance().createXMLStreamWriter(stm), indent, null);
-        } catch (RuntimeException | XMLStreamException | FactoryConfigurationError e) {
+            serialize(val, OUTPUT_FACTORY.createXMLStreamWriter(stm), indent, null);
+        } catch (XMLStreamException e) {
             throw new StyxException("Failed to serialize as XML.", e);
         }
     }
@@ -179,16 +180,14 @@ public final class XmlSerializer {
      * @param session the session to be used to create values.
      * @param stm the InputStream, must contain an XML document.
      * @return the deserialized UDM value, can be null.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given session or stream is null.
+     * @throws StyxException if an XML or IO related error occurs, including format violations.
      */
     public static Value deserialize(Session session, InputStream stm) throws StyxException {
         Objects.requireNonNull(session);
         Objects.requireNonNull(stm);
         try {
-            XMLStreamReader reader = XMLInputFactory.newInstance().createXMLStreamReader(stm);
-            return deserialize(session, reader);
-        } catch (RuntimeException | XMLStreamException | FactoryConfigurationError | StyxException e) {
+            return deserialize(session, INPUT_FACTORY.createXMLStreamReader(stm));
+        } catch (XMLStreamException | StyxException e) {
             throw new StyxException("Failed to deserialize from XML.", e);
         }
     }
@@ -198,16 +197,14 @@ public final class XmlSerializer {
      * @param session the session to be used to create values.
      * @param stm the Reader, must contain an XML document.
      * @return the deserialized UDM value, can be null.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given session or reader is null.
+     * @throws StyxException if an XML or IO related error occurs, including format violations.
      */
     public static Value deserialize(Session session, Reader stm) throws StyxException {
         Objects.requireNonNull(session);
         Objects.requireNonNull(stm);
         try {
-            XMLStreamReader reader = XMLInputFactory.newInstance().createXMLStreamReader(stm);
-            return deserialize(session, reader);
-        } catch (RuntimeException | XMLStreamException | FactoryConfigurationError | StyxException e) {
+            return deserialize(session, INPUT_FACTORY.createXMLStreamReader(stm));
+        } catch (XMLStreamException | StyxException e) {
             throw new StyxException("Failed to deserialize from XML.", e);
         }
     }

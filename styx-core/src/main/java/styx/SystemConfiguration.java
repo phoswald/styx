@@ -3,6 +3,7 @@ package styx;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class SystemConfiguration {
@@ -31,13 +32,16 @@ public final class SystemConfiguration {
             Value factories = config.get(detached.text("factories"));
             if(factories != null) {
                 for(Pair<Value, Value> entry : factories.asComplex()) {
-                    String     factoryName    = entry.key().asText().toTextString();
-                    String     providerName   = entry.val().asComplex().get(detached.text("provider")).asText().toTextString();
+                    String  factoryName    = entry.key().asText().toTextString();
+                    String  providerName   = entry.val().asComplex().get(detached.text("provider")).asText().toTextString();
                     Complex providerParams = entry.val().asComplex().get(detached.text("parameters")).asComplex();
-
-                    LOG.info("Registering session factory '" + (factoryName.length() == 0 ? "<default>" : factoryName) + "' with provider '" + providerName + "' and parameters " + detached.serialize(providerParams, false) + ".");
-                    SessionFactory factory = SessionManager.createSessionFactory(providerName, providerParams);
-                    SessionManager.registerSessionFactory(factoryName, factory);
+                    try {
+                        LOG.info("Registering session factory '" + factoryName + "' with provider '" + providerName + "' and parameters " + detached.serialize(providerParams, false) + ".");
+                        SessionFactory factory = SessionManager.createSessionFactory(providerName, providerParams);
+                        SessionManager.registerSessionFactory(factoryName, factory);
+                    } catch(RuntimeException | StyxException e) {
+                        LOG.log(Level.SEVERE, "Failed to register session factory '" + factoryName + "'.", e);
+                    }
                 }
             }
         }

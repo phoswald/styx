@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.xml.stream.FactoryConfigurationError;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -15,18 +14,19 @@ import styx.Value;
 
 public final class XmlExporter {
 
+    private static final XMLOutputFactory OUTPUT_FACTORY = XMLOutputFactory.newFactory();
+
+    private static final byte[] BOM = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
+
     public static Value importDocument(Session session, InputStream stm) {
         return null;
     }
 
     public static void exportDocument(Value val, OutputStream stm) throws IOException {
-        XMLStreamWriter writer;
         try {
-            writer = XMLOutputFactory.newInstance().createXMLStreamWriter(stm);
-            // writer.writeStartDocument();
-            exportValue(val, writer);
-            // writer.writeEndDocument();
-        } catch (XMLStreamException | FactoryConfigurationError e) {
+            stm.write(BOM);
+            exportValue(val, OUTPUT_FACTORY.createXMLStreamWriter(stm));
+        } catch (XMLStreamException e) {
             throw new IOException(e);
         }
     }

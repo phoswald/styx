@@ -259,10 +259,9 @@ public final class Decimal {
 
     /**
      * Compares two decimal numbers.
-     * @param a the 1st value to compare.
-     * @param b the 2nd value to compare.
+     * @param a the 1st value to compare, must not be null.
+     * @param b the 2nd value to compare, must not be null.
      * @return -1 if a < b, +1 if a > b or 0 if a == b
-     * @throws NullPointerException if a or b is null
      */
     public static int compare(Decimal a, Decimal b) {
         int asig = a.sign();

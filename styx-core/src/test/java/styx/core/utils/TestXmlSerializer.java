@@ -21,36 +21,53 @@ import java.util.List;
 
 import org.junit.Test;
 
-import styx.Complex;
 import styx.Session;
 import styx.SessionFactory;
 import styx.SessionManager;
 import styx.StyxException;
 import styx.Value;
-import styx.core.values.CompiledComplex;
 
-public class TestXmlSerializer { // TODO SYNTAX REDESIGN: cleanup
+public class TestXmlSerializer {
 
     private static SessionFactory sf = SessionManager.createMemorySessionFactory(false);
 
     @Test
-    public void testSimple() throws StyxException, IOException {
+    public void testSerializeChars() throws StyxException {
         try(Session session = sf.createSession()) {
-
-            String chars = "<?xml version=\"1.0\" ?><text>foo</text>";
-            byte[] bytes = "<?xml version=\"1.0\" encoding=\"utf-8\"?><text>foo</text>".getBytes(StandardCharsets.UTF_8);
-
             StringWriter writer = new StringWriter();
-            XmlSerializer.serialize(session.text("foo"), writer, false); // produces an XML declaration _without_ encoding
-            assertEquals(chars, writer.toString());
-            assertEquals("\"foo\"", XmlSerializer.deserialize(session, new StringReader(chars)).toString());
+            XmlSerializer.serialize(session.text("foo"), writer, false);
+            assertEquals("<?xml version=\"1.0\" ?><text>foo</text>", writer.toString());
+        }
+    }
 
+    @Test
+    public void testSerializeBytes() throws StyxException, IOException {
+        try(Session session = sf.createSession()) {
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            XmlSerializer.serialize(session.text("foo"), stream, false); // produces an XML declaration _with_ encoding (but NO byte order mark)
-            //assertEquals((byte) 0xEF, stream.toByteArray()[0]);
-            //assertEquals((byte) 0xBB, stream.toByteArray()[1]);
-            //assertEquals((byte) 0xBF, stream.toByteArray()[2]);
-            assertArrayEquals(bytes, stream.toByteArray());
+            XmlSerializer.serialize(session.text("foo"), stream, false);
+            assertArrayEquals(toUtf8Bytes("<?xml version=\"1.0\" encoding=\"utf-8\"?><text>foo</text>", true), stream.toByteArray());
+        }
+    }
+
+    @Test
+    public void deserializeChars() throws StyxException {
+        try(Session session = sf.createSession()) {
+            assertEquals("\"foo\"", XmlSerializer.deserialize(session, new StringReader("<?xml version=\"1.0\" ?><text>foo</text>")).toString());
+        }
+    }
+
+    @Test
+    public void deserializeBytesNoBom() throws StyxException, IOException {
+        try(Session session = sf.createSession()) {
+            byte[] bytes = toUtf8Bytes("<?xml version=\"1.0\" ?><text>foo</text>", false);
+            assertEquals("\"foo\"", XmlSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
+        }
+    }
+
+    @Test
+    public void deserializeBytesBom() throws StyxException, IOException {
+        try(Session session = sf.createSession()) {
+            byte[] bytes = toUtf8Bytes("<?xml version=\"1.0\" ?><text>foo</text>", true);
             assertEquals("\"foo\"", XmlSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
         }
     }
@@ -59,7 +76,7 @@ public class TestXmlSerializer { // TODO SYNTAX REDESIGN: cleanup
     public void testIndent() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
             String chars = "<?xml version=\"1.0\" ?>\n<complex>\n    <text key=\"1\">foo</text>\n    <text key=\"2\">bar</text>\n</complex>";
-            byte[] bytes = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<complex>\n    <text key=\"1\">foo</text>\n    <text key=\"2\">bar</text>\n</complex>".getBytes(StandardCharsets.UTF_8);
+            byte[] bytes = toUtf8Bytes("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<complex>\n    <text key=\"1\">foo</text>\n    <text key=\"2\">bar</text>\n</complex>", true);
 
             StringWriter writer = new StringWriter();
             XmlSerializer.serialize(session.deserialize("[\"foo\",\"bar\"]"), writer, true);
@@ -130,7 +147,7 @@ public class TestXmlSerializer { // TODO SYNTAX REDESIGN: cleanup
                     serializeRoundTrip(session, session.deserialize("[ \"€\", \"ä\", \"ö\", \"ü\", \"'\", \"\\\"\" ]")));
 
             assertArrayEquals(
-                    "<?xml version=\"1.0\" encoding=\"utf-8\"?><complex><text key=\"1\">€</text><text key=\"2\">ä</text><text key=\"3\">ö</text><text key=\"4\">ü</text><text key=\"5\">\'</text><text key=\"6\">\"</text></complex>".getBytes(StandardCharsets.UTF_8),
+                    toUtf8Bytes("<?xml version=\"1.0\" encoding=\"utf-8\"?><complex><text key=\"1\">€</text><text key=\"2\">ä</text><text key=\"3\">ö</text><text key=\"4\">ü</text><text key=\"5\">\'</text><text key=\"6\">\"</text></complex>", true),
                     serializeRoundTripBytes(session, session.deserialize("[ \"€\", \"ä\", \"ö\", \"ü\", \"'\", \"\\\"\" ]")));
         }
     }
@@ -158,16 +175,6 @@ public class TestXmlSerializer { // TODO SYNTAX REDESIGN: cleanup
         try(Session session = sf.createSession()) {
 
             try {
-                Value nasty = new CompiledComplex() {
-                    @Override protected Complex toValue() { throw new RuntimeException("BOOM!"); }
-                };
-                XmlSerializer.serialize(nasty, new StringWriter(), false);
-                fail();
-            } catch(StyxException e) {
-                assertTrue(e.getMessage().contains("Failed to serialize as XML."));
-            }
-
-            try {
                 XmlSerializer.serialize(session.text("XXX"), (OutputStream) null, false);
                 fail();
             } catch(NullPointerException e) { }
@@ -181,7 +188,7 @@ public class TestXmlSerializer { // TODO SYNTAX REDESIGN: cleanup
                 Writer nasty = new Writer() {
                     @Override public void close() { }
                     @Override public void flush() { }
-                    @Override public void write(char[] arg0, int arg1, int arg2) { throw new RuntimeException("BOOM!"); }
+                    @Override public void write(char[] arg0, int arg1, int arg2) throws IOException { throw new IOException("BOOM!"); }
                 };
                 XmlSerializer.serialize(session.text("XXX"), nasty, false);
                 fail();
@@ -230,7 +237,7 @@ public class TestXmlSerializer { // TODO SYNTAX REDESIGN: cleanup
             try {
                 Reader nasty = new Reader() {
                     @Override public void close() { }
-                    @Override public int read(char[] cbuf, int off, int len) { throw new RuntimeException("BOOM!"); }
+                    @Override public int read(char[] cbuf, int off, int len) throws IOException { throw new IOException("BOOM!"); }
                 };
                 XmlSerializer.deserialize(session, nasty);
                 fail();
@@ -281,5 +288,14 @@ public class TestXmlSerializer { // TODO SYNTAX REDESIGN: cleanup
         try(StringReader stm = new StringReader(xml)) {
             return XmlSerializer.deserialize(session, stm);
         }
+    }
+
+    private static byte[] toUtf8Bytes(String text, boolean bom) throws IOException {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        if(bom) {
+            stream.write(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF });
+        }
+        stream.write(text.getBytes(StandardCharsets.UTF_8));
+        return stream.toByteArray();
     }
 }

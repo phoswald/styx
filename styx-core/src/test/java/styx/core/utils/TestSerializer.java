@@ -6,12 +6,14 @@ import static org.junit.Assert.assertNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import org.junit.Test;
@@ -21,9 +23,40 @@ import styx.SessionManager;
 import styx.StyxException;
 import styx.Value;
 
-public class TestSerializer { // TODO SYNTAX REDESIGN: cleanup
+public class TestSerializer {
 
     private Session session = SessionManager.getDetachedSession();
+
+    @Test
+    public void testSerializeChars() throws StyxException {
+        StringWriter writer = new StringWriter();
+        Serializer.serialize(session.text("foo"), writer, false);
+        assertEquals("\"foo\"", writer.toString());
+    }
+
+    @Test
+    public void testSerializeBytes() throws StyxException, IOException {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        Serializer.serialize(session.text("foo"), stream, false);
+        assertArrayEquals(toUtf8Bytes("\"foo\"", true), stream.toByteArray());
+    }
+
+    @Test
+    public void deserializeChars() throws StyxException {
+        assertEquals("\"foo\"", Serializer.deserialize(session, new StringReader("\"foo\"")).toString());
+    }
+
+    @Test
+    public void deserializeBytesNoBom() throws StyxException, IOException {
+        byte[] bytes = toUtf8Bytes("\"foo\"", false);
+        assertEquals("\"foo\"", Serializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
+    }
+
+    @Test
+    public void deserializeBytesBom() throws StyxException, IOException {
+        byte[] bytes = toUtf8Bytes("\"foo\"", true);
+        assertEquals("\"foo\"", Serializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
+    }
 
     @Test(expected=NullPointerException.class)
     public void testNoOutPath() throws StyxException {
@@ -99,23 +132,29 @@ public class TestSerializer { // TODO SYNTAX REDESIGN: cleanup
     }
 
     @Test
-    public void testNoText() throws StyxException {
-        assertNull(Serializer.deserialize(session, new ByteArrayInputStream(new byte[] { })));
+    public void testNoText() throws StyxException, IOException {
+        assertNull(Serializer.deserialize(session, new ByteArrayInputStream(toUtf8Bytes("", false))));
+        assertNull(Serializer.deserialize(session, new ByteArrayInputStream(toUtf8Bytes("", true))));
         assertNull(Serializer.deserialize(session, new StringReader("")));
         assertNull(Serializer.deserialize(session, ""));
+        assertNull(Serializer.deserialize(session, "\uFEFF \t\r\n"));
         assertNull(Serializer.deserialize(session, new StringReader(" \t\r\n")));
+        assertNull(Serializer.deserialize(session, new StringReader("\uFEFF \t\r\n")));
         assertEquals("\"\"", Serializer.serialize(session.text(null), false));
     }
 
     @Test
-    public void testSimpleText() throws StyxException {
-        assertEquals("\"abcd\"", Serializer.deserialize(session, new ByteArrayInputStream(new byte[] { '"', 'a', 'b', 'c', 'd', '"' })).toString());
+    public void testSimpleText() throws StyxException, IOException {
+        assertEquals("\"abcd\"", Serializer.deserialize(session, new ByteArrayInputStream(toUtf8Bytes("\"abcd\"", false))).toString());
+        assertEquals("\"abcd\"", Serializer.deserialize(session, new ByteArrayInputStream(toUtf8Bytes("\"abcd\"", true))).toString());
         assertEquals("\"abcd\"", Serializer.deserialize(session, new StringReader("\"abcd\"")).toString());
         assertEquals("\"abcd\"", Serializer.deserialize(session, "\"abcd\"").toString());
+        assertEquals("\"abcd\"", Serializer.deserialize(session, "\uFEFF\"abcd\"").toString());
         assertEquals("\"abcd\"", Serializer.deserialize(session, new StringReader(" \t\r\n \"abcd\" \t\r\n ")).toString());
+        assertEquals("\"abcd\"", Serializer.deserialize(session, new StringReader("\uFEFF \t\r\n \"abcd\" \t\r\n ")).toString());
         ByteArrayOutputStream stm = new ByteArrayOutputStream();
         Serializer.serialize(session.text("abcd"), stm, false);
-        assertArrayEquals(new byte[] { '"', 'a', 'b', 'c', 'd', '"' }, stm.toByteArray());
+        assertArrayEquals(toUtf8Bytes("\"abcd\"",true), stm.toByteArray());
         StringWriter wrt = new StringWriter();
         Serializer.serialize(session.text("abcd"), wrt, false);
         assertEquals("\"abcd\"", wrt.toString());
@@ -158,5 +197,14 @@ public class TestSerializer { // TODO SYNTAX REDESIGN: cleanup
     private String format(String str, boolean indent) throws StyxException {
         Value val = Serializer.deserialize(session, str);
         return Serializer.serialize(val, indent);
+    }
+
+    private static byte[] toUtf8Bytes(String text, boolean bom) throws IOException {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        if(bom) {
+            stream.write(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF });
+        }
+        stream.write(text.getBytes(StandardCharsets.UTF_8));
+        return stream.toByteArray();
     }
 }

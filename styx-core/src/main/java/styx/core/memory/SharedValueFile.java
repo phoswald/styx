@@ -2,7 +2,9 @@ package styx.core.memory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -20,6 +22,8 @@ import styx.Value;
 public final class SharedValueFile implements SharedValue {
 
     private static final Logger LOG = Logger.getLogger(SharedValueFile.class.toString());
+
+    private static final int BOM = 0xFEFF;
 
     private final Path    file;
     private final boolean indent;
@@ -88,7 +92,7 @@ public final class SharedValueFile implements SharedValue {
 
         // Load the file and try to read its version. If there is no version, assume zero.
         // Since new values are written to temporary files, we don't have to expect incomplete data.
-        try(InputStream stm = Files.newInputStream(file)) {
+        try(Reader stm = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             int version = readVersion(stm);
             Value value;
             if(version > 0) {
@@ -151,7 +155,7 @@ public final class SharedValueFile implements SharedValue {
 
         // Write the value to the temporary file. This may take some time for large values.
         // It is safe as long as the file is truncated and not deleted and re-created.
-        try(OutputStream stm = Files.newOutputStream(file2)) {
+        try(Writer stm = Files.newBufferedWriter(file2, StandardCharsets.UTF_8)) {
             writeVersion(stm, incrementVersion(version));
             session.serialize(value, stm, indent);
         } catch(RuntimeException | IOException | StyxException  e) {
@@ -187,17 +191,21 @@ public final class SharedValueFile implements SharedValue {
     }
 
     private static int readVersion(Path file) {
-        try(InputStream stm = Files.newInputStream(file)) {
+        try(Reader stm = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             return readVersion(stm);
         } catch (IOException e) {
             return 0;
         }
     }
 
-    private static int readVersion(InputStream stm) throws IOException {
+    private static int readVersion(Reader stm) throws IOException {
         int version = 0;
         for(int i = 0; i < 31; i++) {
             int chr = stm.read();
+            if(chr == BOM) {
+                i--;
+                continue;
+            }
             if(chr != '\t' && chr != ' ') {
                 return 0;
             }
@@ -211,7 +219,8 @@ public final class SharedValueFile implements SharedValue {
         return version;
     }
 
-    private static void writeVersion(OutputStream stm, int version) throws IOException {
+    private static void writeVersion(Writer stm, int version) throws IOException {
+        stm.write(BOM);
         for(int i = 0; i < 31; i++) {
             boolean bit = (version & (1<<i)) != 0;
             stm.write(bit ? (byte) '\t' : (byte) ' ');

@@ -3,6 +3,7 @@ package styx.web.servlet;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.servlet.http.Cookie;
@@ -35,7 +36,7 @@ public abstract class BaseServlet extends HttpServlet {
     protected static final String CONTENT_TYPE_JSON = "application/json";
 
     protected static final String sessionConfigFile  = System.getProperty("styx.web.session.config", "system.styx");
-    protected static final String sessionFactoryName = System.getProperty("styx.web.session.factory");
+    protected static final String sessionFactoryName = System.getProperty("styx.web.session.factory", "");
 
     protected final SessionFactory sessionFactory = SessionManager.lookupSessionFactory(sessionFactoryName);
 
@@ -45,9 +46,9 @@ public abstract class BaseServlet extends HttpServlet {
             // If the file does not exist, at least a memory session provider will be provided.
             SystemConfiguration.load(sessionConfigFile);
             LOG.info("Loaded STYX configuration from: " + sessionConfigFile);
-            LOG.info("Using STYX session factory: " + (sessionFactoryName == null || sessionFactoryName.length() == 0 ? "<default>" : sessionFactoryName));
+            LOG.info("Using STYX session factory: " + sessionFactoryName);
         } catch (StyxException e) {
-            LOG.severe("Cannot load STYX configuration: " + e);
+            LOG.log(Level.SEVERE, "Cannot load STYX configuration.", e);
             throw new StyxRuntimeException("Cannot load STYX configuration.", e);
         }
     }

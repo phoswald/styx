@@ -19,39 +19,55 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
-import styx.Complex;
 import styx.Session;
 import styx.SessionFactory;
 import styx.SessionManager;
 import styx.StyxException;
 import styx.Value;
-import styx.core.values.CompiledComplex;
 
-public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
+public class TestJsonSerializer {
 
     private static SessionFactory sf = SessionManager.createMemorySessionFactory(false);
 
     @Test
-    public void testSimple() throws StyxException, IOException {
+    public void testSerializeChars() throws StyxException {
         try(Session session = sf.createSession()) {
-
-            String chars = "{\"@text\":\"foo\"}";
-            byte[] bytes = chars.getBytes(StandardCharsets.UTF_8);
-
             StringWriter writer = new StringWriter();
             JsonSerializer.serialize(session.text("foo"), writer, false);
-            assertEquals(chars, writer.toString());
-            assertEquals("\"foo\"", JsonSerializer.deserialize(session, new StringReader(chars)).toString());
+            assertEquals("{\"@text\":\"foo\"}", writer.toString());
+        }
+    }
 
+    @Test
+    public void testSerializeBytes() throws StyxException, IOException {
+        try(Session session = sf.createSession()) {
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            JsonSerializer.serialize(session.text("foo"), stream, false); // NO byte order mark
-            //assertEquals((byte) 0xEF, stream.toByteArray()[0]);
-            //assertEquals((byte) 0xBB, stream.toByteArray()[1]);
-            //assertEquals((byte) 0xBF, stream.toByteArray()[2]);
-            assertArrayEquals(bytes, stream.toByteArray());
+            JsonSerializer.serialize(session.text("foo"), stream, false);
+            assertArrayEquals(toUtf8Bytes("{\"@text\":\"foo\"}", true), stream.toByteArray());
+        }
+    }
+
+    @Test
+    public void deserializeChars() throws StyxException {
+        try(Session session = sf.createSession()) {
+            assertEquals("\"foo\"", JsonSerializer.deserialize(session, new StringReader("{\"@text\":\"foo\"}")).toString());
+        }
+    }
+
+    @Test
+    public void deserializeBytesNoBom() throws StyxException, IOException {
+        try(Session session = sf.createSession()) {
+            byte[] bytes = toUtf8Bytes("{\"@text\":\"foo\"}", false);
+            assertEquals("\"foo\"", JsonSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
+        }
+    }
+
+    @Test
+    public void deserializeBytesBom() throws StyxException, IOException {
+        try(Session session = sf.createSession()) {
+            byte[] bytes = toUtf8Bytes("{\"@text\":\"foo\"}", true);
             assertEquals("\"foo\"", JsonSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
         }
     }
@@ -59,9 +75,8 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
     @Test
     public void testIndent() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
-
             String chars = "\n{\n    \"1\":\"foo\",\n    \"2\":\"bar\"\n}";
-            byte[] bytes = chars.getBytes(StandardCharsets.UTF_8);
+            byte[] bytes = toUtf8Bytes(chars, true);
 
             StringWriter writer = new StringWriter();
             JsonSerializer.serialize(session.deserialize("[\"foo\",\"bar\"]"), writer, true);
@@ -81,15 +96,14 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
         }
     }
 
-    @Ignore
     @Test
     public void testRoundTrip() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
             assertEquals("{\"@text\":\"\"}", serializeRoundTrip(session, session.deserialize("\"\"")));
             assertEquals("{\"@text\":\"foo\"}", serializeRoundTrip(session, session.deserialize("\"foo\"")));
 
-            assertEquals("{\"@ref\":[]}", serializeRoundTrip(session, session.deserialize("/")));
-            assertEquals("{\"@ref\":[\"foo\",\"bar\"]}", serializeRoundTrip(session, session.deserialize("/foo/bar")));
+            assertEquals("{\"@ref\":[]}", serializeRoundTrip(session, session.deserialize("[/]")));
+            assertEquals("{\"@ref\":[\"foo\",\"bar\"]}", serializeRoundTrip(session, session.deserialize("[/foo/bar]")));
 
             assertEquals("{}", serializeRoundTrip(session, session.deserialize("[]")));
             assertEquals("{\"1\":\"foo\",\"2\":\"bar\"}", serializeRoundTrip(session, session.deserialize("[\"foo\",\"bar\"]")));
@@ -103,7 +117,7 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
                     "\"tags\":{\"1\":{\"X\":\"x\"},\"2\":{\"Y\":\"y\"}},"+
                     "\"year\":\"1977\""+
                     "}",
-                    serializeRoundTrip(session, session.deserialize("[ home:/home/philip, name:\"philip\", tags:[@X \"x\", @Y \"y\"], year:1977 ]")));
+                    serializeRoundTrip(session, session.deserialize("[ home:[/home/philip], name:\"philip\", tags:[@X \"x\", @Y \"y\"], year:1977 ]")));
 
             // a complex value with different values and even a complex key
             assertEquals(
@@ -114,33 +128,32 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
                     "{\"@key\":\"year\",\"@val\":\"1977\"},"+
                     "{\"@key\":{\"k1\":\"v1\",\"k2\":\"v2\"},\"@val\":{\"1\":\"foo\",\"2\":\"bar\"}}"+
                     "]",
-                    serializeRoundTrip(session, session.deserialize("[ home:/home/philip, name:\"philip\", tags:[@X \"x\", @Y \"y\"], year:1977, [k1:\"v1\",k2:\"v2\"]:[\"foo\",\"bar\"]]")));
+                    serializeRoundTrip(session, session.deserialize("[ home:[/home/philip], name:\"philip\", tags:[@X \"x\", @Y \"y\"], year:1977, [k1:\"v1\",k2:\"v2\"]:[\"foo\",\"bar\"]]")));
         }
     }
 
-    @Ignore
     @Test
     public void testRoundTrip2() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
             // a complex with a complex key (array instead of map)
             assertEquals(
                     "[{\"@key\":{\"k1\":\"v1\",\"k2\":\"v2\"},\"@val\":{\"1\":\"foo\",\"2\":\"bar\"}}]",
-                    serializeRoundTrip(session, session.deserialize("{{k1:v1,k2:v2}:{foo,bar}}")));
+                    serializeRoundTrip(session, session.deserialize("[[k1:\"v1\",k2:\"v2\"]:[\"foo\",\"bar\"]]")));
 
             // a complex with a complex key and a text value (<value> after <key>)
             assertEquals(
                     "[{\"@key\":{\"1\":\"complex\",\"2\":\"key\"},\"@val\":\"text\"}]",
-                    serializeRoundTrip(session, session.deserialize("{{complex,key}:text}")));
+                    serializeRoundTrip(session, session.deserialize("[[\"complex\",\"key\"]:\"text\"]")));
 
             // a complex with a complex key nested instead of top level
             assertEquals(
                     "{\"xxx\":[{\"@key\":{\"1\":\"complex\",\"2\":\"key\"},\"@val\":\"text\"}]}",
-                    serializeRoundTrip(session, session.deserialize("<xxx> {{complex,key}:text}")));
+                    serializeRoundTrip(session, session.deserialize("@xxx [[\"complex\",\"key\"]:\"text\"]")));
 
             // Special handling of '@' in keys
             assertEquals(
                     "{\"@:@\":\"X\",\"@:@@\":\"X\",\"@:@@text\":\"X\",\"@:@text\":\"X\",\"@:h@@llo\":\"X\",\"@:h@llo\":\"X\",\"text\":\"X\"}",
-                    serializeRoundTrip(session, session.deserialize("{ \"@\":X, \"@@\":X, \"@@text\":X, \"@text\":X, \"h@@llo\":X, \"h@llo\":X, \"text\":X }")));
+                    serializeRoundTrip(session, session.deserialize("[ \"@\":\"X\", \"@@\":\"X\", \"@@text\":\"X\", \"@text\":\"X\", \"h@@llo\":\"X\", \"h@llo\":\"X\", \"text\":\"X\" ]")));
         }
     }
 
@@ -152,12 +165,11 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
                     serializeRoundTrip(session, session.deserialize("[ \"€\", \"ä\", \"ö\", \"ü\", \"'\", \"\\\"\" ]")));
 
             assertArrayEquals(
-                    "{\"1\":\"€\",\"2\":\"ä\",\"3\":\"ö\",\"4\":\"ü\",\"5\":\"\'\",\"6\":\"\\\"\"}".getBytes(StandardCharsets.UTF_8),
+                    toUtf8Bytes("\uFEFF{\"1\":\"€\",\"2\":\"ä\",\"3\":\"ö\",\"4\":\"ü\",\"5\":\"\'\",\"6\":\"\\\"\"}", false),
                     serializeRoundTripBytes(session, session.deserialize("[ \"€\", \"ä\", \"ö\", \"ü\", \"'\", \"\\\"\" ]")));
         }
     }
 
-    @Ignore
     @Test
     public void testTypes() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
@@ -167,7 +179,6 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
         }
     }
 
-    @Ignore
     @Test
     public void testFunctions() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
@@ -180,16 +191,6 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
     @Test
     public void testSerializeInvalid() throws StyxException {
         try(Session session = sf.createSession()) {
-
-            try {
-                Value nasty = new CompiledComplex() {
-                    @Override protected Complex toValue() { throw new RuntimeException("BOOM!"); }
-                };
-                JsonSerializer.serialize(nasty, new StringWriter(), false);
-                fail();
-            } catch(StyxException e) {
-                assertTrue(e.getMessage().contains("Failed to serialize as JSON."));
-            }
 
             try {
                 JsonSerializer.serialize(session.text("XXX"), (OutputStream) null, false);
@@ -205,7 +206,7 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
                 Writer nasty = new Writer() {
                     @Override public void close() { }
                     @Override public void flush() { }
-                    @Override public void write(char[] arg0, int arg1, int arg2) { throw new RuntimeException("BOOM!"); }
+                    @Override public void write(char[] arg0, int arg1, int arg2) throws IOException { throw new IOException("BOOM!"); }
                 };
                 JsonSerializer.serialize(session.text("XXX"), nasty, false);
                 fail();
@@ -260,7 +261,7 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
             try {
                 Reader nasty = new Reader() {
                     @Override public void close() { }
-                    @Override public int read(char[] cbuf, int off, int len) { throw new RuntimeException("BOOM!"); }
+                    @Override public int read(char[] cbuf, int off, int len) throws IOException { throw new IOException("BOOM!"); }
                 };
                 JsonSerializer.deserialize(session, nasty);
                 fail();
@@ -307,5 +308,14 @@ public class TestJsonSerializer { // TODO SYNTAX REDESIGN: cleanup
         try(StringReader stm = new StringReader(xml)) {
             return JsonSerializer.deserialize(session, stm);
         }
+    }
+
+    private static byte[] toUtf8Bytes(String text, boolean bom) throws IOException {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        if(bom) {
+            stream.write(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF });
+        }
+        stream.write(text.getBytes(StandardCharsets.UTF_8));
+        return stream.toByteArray();
     }
 }

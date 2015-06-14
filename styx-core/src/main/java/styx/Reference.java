@@ -38,7 +38,6 @@ public interface Reference extends Value {
      * Gets the child reference with the given local name.
      * @param name the local name, must not be null.
      * @return never null.
-     * @throws NullPointerException if the given local name was null.
      */
     public Reference child(Value name);
 }

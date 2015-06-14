@@ -32,7 +32,6 @@ public interface Complex extends Value, Iterable<Pair<Value,Value>> {
      * Gets the value for the given key.
      * @param key the key for the value, must not be null.
      * @return the value or null if there is no such value.
-     * @throws NullPointerException if the given key was null.
      */
     public Value get(Value key);
 
@@ -41,7 +40,6 @@ public interface Complex extends Value, Iterable<Pair<Value,Value>> {
      * @param key the key to be set, must not be null.
      * @param val the value to be set, if null the value is removed.
      * @return the modified complex value, never null.
-     * @throws NullPointerException if the given key was null.
      */
     public Complex put(Value key, Value val);
 

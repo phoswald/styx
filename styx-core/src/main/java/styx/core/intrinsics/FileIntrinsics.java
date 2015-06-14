@@ -5,16 +5,17 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import styx.Complex;
 import styx.Determinism;
-import styx.StyxException;
 import styx.Session;
+import styx.StyxException;
 import styx.Value;
 import styx.core.expressions.CompiledFunction;
 import styx.core.expressions.FuncRegistry;
@@ -23,6 +24,8 @@ import styx.core.utils.JsonSerializer;
 import styx.core.utils.XmlSerializer;
 
 public class FileIntrinsics {
+
+    private static final int BOM = 0xFEFF;
 
     public static Complex buildEnvironment(FuncRegistry registry, Session session) throws StyxException {
         return session.complex()
@@ -46,7 +49,7 @@ public class FileIntrinsics {
                 .put(session.text("read_text"), new CompiledFunction(registry, "file_read_text", Determinism.NON_DETERMINISTIC, 1) {
                     @Override
                     public Value invoke(Stack stack) throws StyxException {
-                        try(InputStreamReader stm = new InputStreamReader(new FileInputStream(stack.getFrameValue(0).asText().toTextString()), StandardCharsets.UTF_8)) {
+                        try(Reader stm = Files.newBufferedReader(Paths.get(stack.getFrameValue(0).asText().toTextString()), StandardCharsets.UTF_8)) {
                             return stack.session().text(readToEnd(stm));
                         } catch (IOException e) {
                             throw new StyxException("Cannot read text file.", e);
@@ -56,7 +59,8 @@ public class FileIntrinsics {
                 .put(session.text("write_text"), new CompiledFunction(registry, "file_write_text", Determinism.NON_DETERMINISTIC, 3) {
                     @Override
                     public Value invoke(Stack stack) throws StyxException {
-                        try(OutputStreamWriter stm = new OutputStreamWriter(new FileOutputStream(stack.getFrameValue(0).asText().toTextString()), StandardCharsets.UTF_8)) {
+                        try(Writer stm = Files.newBufferedWriter(Paths.get(stack.getFrameValue(0).asText().toTextString()), StandardCharsets.UTF_8)) {
+                            stm.write(BOM);
                             stm.write(stack.getFrameValue(1).asText().toTextString());
                             return null;
                         } catch (IOException e) {
@@ -142,6 +146,9 @@ public class FileIntrinsics {
         StringBuffer buf = new StringBuffer();
         int c;
         while((c = stm.read()) != -1) {
+            if(c == BOM) {
+                continue;
+            }
             buf.append((char) c);
         }
         return buf.toString();

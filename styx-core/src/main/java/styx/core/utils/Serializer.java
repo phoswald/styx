@@ -27,16 +27,18 @@ import styx.Value;
 
 public final class Serializer {
 
+    private static final int BOM = 0xFEFF;
+
     public static String serialize(Value val, boolean indent) throws StyxException {
         StringWriter stm = new StringWriter();
-        serialize(val, stm, indent);
+        serialize(val, stm, indent, false);
         return stm.toString();
     }
 
     public static void serialize(Value val, Path file, boolean indent) throws StyxException {
         Objects.requireNonNull(file);
         try(Writer stm = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-            serialize(val, stm, indent);
+            serialize(val, stm, indent, true);
         } catch(IOException e) {
             throw new StyxException("Cannot open file for writing.", e);
         }
@@ -47,11 +49,11 @@ public final class Serializer {
      * @param val the value, can be null.
      * @param stm the OutputStream, receives an STYX text document encoded as UTF-8.
      * @param indent true if the output shall be formatted prettily.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given stream is null.
+     * @throws StyxException IO related error occurs.
      */
     public static void serialize(Value val, OutputStream stm, boolean indent) throws StyxException {
-        serialize(val, new BufferedWriter(new OutputStreamWriter(Objects.requireNonNull(stm), StandardCharsets.UTF_8)), indent);
+        Objects.requireNonNull(stm);
+        serialize(val, new BufferedWriter(new OutputStreamWriter(stm, StandardCharsets.UTF_8)), indent, true);
     }
 
     /**
@@ -59,12 +61,18 @@ public final class Serializer {
      * @param val the value, can be null.
      * @param stm the Writer, receives an STYX text document.
      * @param indent true if the output shall be formatted prettily.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given writer is null.
+     * @throws StyxException IO related error occurs.
      */
     public static void serialize(Value val, Writer stm, boolean indent) throws StyxException {
         Objects.requireNonNull(stm);
+        serialize(val, stm, indent, false);
+    }
+
+    private static void serialize(Value val, Writer stm, boolean indent, boolean bom) throws StyxException {
         try {
+            if(bom) {
+                stm.write(BOM);
+            }
             if(val != null) {
                 serializeValue(val, stm, false, indent ? 0 : -1, indent ? 4 : 0);
                 stm.flush();
@@ -93,8 +101,7 @@ public final class Serializer {
      * @param session the session to be used to create values.
      * @param stm the InputStream, must contain an STYX text document.
      * @return the deserialized STYX value, can be null.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given session or stream is null.
+     * @throws StyxException IO related error occurs, including format violations.
      */
     public static Value deserialize(Session session, InputStream stm) throws StyxException {
         return deserialize(session, new InputStreamReader(Objects.requireNonNull(stm), StandardCharsets.UTF_8));
@@ -105,14 +112,16 @@ public final class Serializer {
      * @param session the session to be used to create values.
      * @param stm the Reader, must contain an STYX text document.
      * @return the deserialized STYX value, can be null.
-     * @throws StyxException if an error occurs.
-     * @throws NullPointerException if the given session or reader is null.
+     * @throws StyxException IO related error occurs, including format violations.
      */
     public static Value deserialize(Session session, Reader stm) throws StyxException {
         Objects.requireNonNull(session);
         Objects.requireNonNull(stm);
         try {
             LineReader stm2 = new LineReader(stm); // This also creates a BufferedReader (if necessary)
+            if(stm2.read() != BOM) {
+                stm2.rewind(1);
+            }
             int c = skipWhite(stm2, true);
             stm2.rewind(1);
             Value val = deserializeValue(session, stm2, false);
