@@ -1,10 +1,10 @@
 package styx.app;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +15,7 @@ import styx.StyxException;
 import styx.SystemConfiguration;
 import styx.Value;
 import styx.core.intrinsics.ConsoleIntrinsics;
+import styx.core.intrinsics.FileIntrinsics;
 
 public class Application {
 
@@ -33,13 +34,8 @@ public class Application {
                     scripts.add(arg.substring(6));
                     interactive = false;
                 } else if(arg.startsWith("-file=")) {
-                    try(Reader stm = new InputStreamReader(new FileInputStream(arg.substring(6)), Charset.forName("UTF-8"))) {
-                        StringBuilder sb = new StringBuilder();
-                        int c;
-                        while((c = stm.read()) != -1) {
-                            sb.append((char) c);
-                        }
-                        scripts.add(sb.toString());
+                    try(Reader stm = Files.newBufferedReader(Paths.get(arg.substring(6)), StandardCharsets.UTF_8)) {
+                        scripts.add(FileIntrinsics.readToEnd(stm));
                         interactive = false;
                     }
                 } else if(arg.equals("-interactive")) {

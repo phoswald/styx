@@ -1,5 +1,6 @@
 package styx.core.utils;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -104,7 +105,8 @@ public final class Serializer {
      * @throws StyxException IO related error occurs, including format violations.
      */
     public static Value deserialize(Session session, InputStream stm) throws StyxException {
-        return deserialize(session, new InputStreamReader(Objects.requireNonNull(stm), StandardCharsets.UTF_8));
+        Objects.requireNonNull(stm);
+        return deserialize(session, new BufferedReader(new InputStreamReader(stm, StandardCharsets.UTF_8)));
     }
 
     /**
