@@ -11,30 +11,6 @@ import styx.core.utils.Serializer;
 
 public class TestValueParser extends TestAnyParser {
 
-//    @Test
-//    public void testQuoteUnquote() throws StyxException {
-//        testParse("123", session.text("123"));
-//        testParse("@ 123", session.text("123"));
-//        testParse("@ # 123", session.text("123"));
-//
-//        testParse("ABC", session.text("ABC"));
-//        testParse("@ # ABC", session.text("ABC"));
-//
-//        testParse("{ 123, ABC }", session.complex(session.text("123")).add(session.text("ABC")));
-//        testParse("@ { 123, # ABC }", session.complex(session.text("123")).add(session.text("ABC")));
-//        testParse("@ # { 123, ABC }", session.complex(session.text("123")).add(session.text("ABC")));
-//    }
-
-//    @Test
-//    public void testQuoteUnquoteInvalid() throws StyxException {
-//        testParseException("#xxx", "Invalid value");
-//        testParseException("@xxx", "The expression is not constant.");
-//        testParseException("{#xxx}", "Invalid complex value");
-//        testParseException("{@xxx}", "The expression is not constant.");
-//        testParseException("[#xxx]", "Invalid reference value");
-//        testParseException("[@xxx]", "The expression is not constant.");
-//    }
-
     @Override
     protected void testRoundTrip(String str, Value val) throws StyxException {
         Parser               parser = new Parser();

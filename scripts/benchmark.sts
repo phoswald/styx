@@ -15,9 +15,9 @@ atomic {
     for(i := 1, i <= n, i+=1) {
         y := [ ]
         for(j := 1, j <= n, j+=1) {
-            y = [ y, "Inner " ++ j, i * j ]
+            y = [ (y), ("Inner " ++ j), (i * j) ]
         }
-        x = [ x, "Outer " ++ i, y ]
+        x = [ (x), ("Outer " ++ i), (y) ]
     }
     r[*] = x
 }

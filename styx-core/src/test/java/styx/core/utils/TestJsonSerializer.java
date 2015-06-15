@@ -52,7 +52,7 @@ public class TestJsonSerializer {
     @Test
     public void deserializeChars() throws StyxException {
         try(Session session = sf.createSession()) {
-            assertEquals("\"foo\"", JsonSerializer.deserialize(session, new StringReader("{\"@text\":\"foo\"}")).toString());
+            assertEquals("foo", JsonSerializer.deserialize(session, new StringReader("{\"@text\":\"foo\"}")).toString());
         }
     }
 
@@ -60,7 +60,7 @@ public class TestJsonSerializer {
     public void deserializeBytesNoBom() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
             byte[] bytes = toUtf8Bytes("{\"@text\":\"foo\"}", false);
-            assertEquals("\"foo\"", JsonSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
+            assertEquals("foo", JsonSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
         }
     }
 
@@ -68,7 +68,7 @@ public class TestJsonSerializer {
     public void deserializeBytesBom() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
             byte[] bytes = toUtf8Bytes("{\"@text\":\"foo\"}", true);
-            assertEquals("\"foo\"", JsonSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
+            assertEquals("foo", JsonSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
         }
     }
 
@@ -79,11 +79,11 @@ public class TestJsonSerializer {
             byte[] bytes = toUtf8Bytes(chars, true);
 
             StringWriter writer = new StringWriter();
-            JsonSerializer.serialize(session.deserialize("[\"foo\",\"bar\"]"), writer, true);
+            JsonSerializer.serialize(session.deserialize("[foo,bar]"), writer, true);
             assertEquals(chars, writer.toString());
 
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            JsonSerializer.serialize(session.deserialize("[\"foo\",\"bar\"]"), stream, true);
+            JsonSerializer.serialize(session.deserialize("[foo,bar]"), stream, true);
             assertArrayEquals(bytes, stream.toByteArray());
         }
     }
@@ -100,14 +100,14 @@ public class TestJsonSerializer {
     public void testRoundTrip() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
             assertEquals("{\"@text\":\"\"}", serializeRoundTrip(session, session.deserialize("\"\"")));
-            assertEquals("{\"@text\":\"foo\"}", serializeRoundTrip(session, session.deserialize("\"foo\"")));
+            assertEquals("{\"@text\":\"foo\"}", serializeRoundTrip(session, session.deserialize("foo")));
 
             assertEquals("{\"@ref\":[]}", serializeRoundTrip(session, session.deserialize("[/]")));
             assertEquals("{\"@ref\":[\"foo\",\"bar\"]}", serializeRoundTrip(session, session.deserialize("[/foo/bar]")));
 
             assertEquals("{}", serializeRoundTrip(session, session.deserialize("[]")));
-            assertEquals("{\"1\":\"foo\",\"2\":\"bar\"}", serializeRoundTrip(session, session.deserialize("[\"foo\",\"bar\"]")));
-            assertEquals("{\"A\":\"foo\",\"B\":\"bar\"}", serializeRoundTrip(session, session.deserialize("[A:\"foo\",B:\"bar\"]")));
+            assertEquals("{\"1\":\"foo\",\"2\":\"bar\"}", serializeRoundTrip(session, session.deserialize("[foo,bar]")));
+            assertEquals("{\"A\":\"foo\",\"B\":\"bar\"}", serializeRoundTrip(session, session.deserialize("[A:foo,B:bar]")));
 
             // a complex value with different values and but no complex key
             assertEquals(
@@ -117,7 +117,7 @@ public class TestJsonSerializer {
                     "\"tags\":{\"1\":{\"X\":\"x\"},\"2\":{\"Y\":\"y\"}},"+
                     "\"year\":\"1977\""+
                     "}",
-                    serializeRoundTrip(session, session.deserialize("[ home:[/home/philip], name:\"philip\", tags:[@X \"x\", @Y \"y\"], year:1977 ]")));
+                    serializeRoundTrip(session, session.deserialize("[ home:[/home/philip], name:philip, tags:[@X x, @Y y], year:1977 ]")));
 
             // a complex value with different values and even a complex key
             assertEquals(
@@ -128,7 +128,7 @@ public class TestJsonSerializer {
                     "{\"@key\":\"year\",\"@val\":\"1977\"},"+
                     "{\"@key\":{\"k1\":\"v1\",\"k2\":\"v2\"},\"@val\":{\"1\":\"foo\",\"2\":\"bar\"}}"+
                     "]",
-                    serializeRoundTrip(session, session.deserialize("[ home:[/home/philip], name:\"philip\", tags:[@X \"x\", @Y \"y\"], year:1977, [k1:\"v1\",k2:\"v2\"]:[\"foo\",\"bar\"]]")));
+                    serializeRoundTrip(session, session.deserialize("[ home:[/home/philip], name:philip, tags:[@X x, @Y y], year:1977, [k1:v1,k2:v2]:[foo,bar]]")));
         }
     }
 
@@ -138,22 +138,22 @@ public class TestJsonSerializer {
             // a complex with a complex key (array instead of map)
             assertEquals(
                     "[{\"@key\":{\"k1\":\"v1\",\"k2\":\"v2\"},\"@val\":{\"1\":\"foo\",\"2\":\"bar\"}}]",
-                    serializeRoundTrip(session, session.deserialize("[[k1:\"v1\",k2:\"v2\"]:[\"foo\",\"bar\"]]")));
+                    serializeRoundTrip(session, session.deserialize("[[k1:v1,k2:v2]:[foo,bar]]")));
 
             // a complex with a complex key and a text value (<value> after <key>)
             assertEquals(
                     "[{\"@key\":{\"1\":\"complex\",\"2\":\"key\"},\"@val\":\"text\"}]",
-                    serializeRoundTrip(session, session.deserialize("[[\"complex\",\"key\"]:\"text\"]")));
+                    serializeRoundTrip(session, session.deserialize("[[complex,key]:text]")));
 
             // a complex with a complex key nested instead of top level
             assertEquals(
                     "{\"xxx\":[{\"@key\":{\"1\":\"complex\",\"2\":\"key\"},\"@val\":\"text\"}]}",
-                    serializeRoundTrip(session, session.deserialize("@xxx [[\"complex\",\"key\"]:\"text\"]")));
+                    serializeRoundTrip(session, session.deserialize("@xxx [[complex,key]:text]")));
 
             // Special handling of '@' in keys
             assertEquals(
                     "{\"@:@\":\"X\",\"@:@@\":\"X\",\"@:@@text\":\"X\",\"@:@text\":\"X\",\"@:h@@llo\":\"X\",\"@:h@llo\":\"X\",\"text\":\"X\"}",
-                    serializeRoundTrip(session, session.deserialize("[ \"@\":\"X\", \"@@\":\"X\", \"@@text\":\"X\", \"@text\":\"X\", \"h@@llo\":\"X\", \"h@llo\":\"X\", \"text\":\"X\" ]")));
+                    serializeRoundTrip(session, session.deserialize("[ \"@\":X, \"@@\":X, \"@@text\":X, \"@text\":X, \"h@@llo\":X, \"h@llo\":X, text:X ]")));
         }
     }
 

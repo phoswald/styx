@@ -97,16 +97,13 @@ EOF = {if(pos.val == _input.length) return true} <set> '' ;
 VALUE : Expression =
     BINARY    {output.val = new Constant(output1.val)} |
     NUMBER    {output.val = new Constant(output1.val)} |
+    IDENT     {output.val = new Constant(output1.val)} |
     STRING    {output.val = new Constant(output1.val)} |
     REFERENCE {output.val = output1.val} |
     COMPLEX   {output.val = output1.val} |
     TYPE      {output.val = output1.val} |
-    FUNC      {output.val = output1.val} ;
-
-KEY : Expression =
-    '(' WSML <to:output> EXPRESSION WSML ')' | # TODO really here? VALUE and KEY should both allow (...)
-    IDENT {output.val = new Constant(output1.val)} |
-    <to:output> VALUE ;
+    FUNC      {output.val = output1.val} |
+    '(' WSML <to:output> EXPRESSION WSML ')' ;
 
 ### Numeric Value ###
 
@@ -196,23 +193,25 @@ REFERENCE : Expression =
     '[/' WS REFERENCE_HEAD ']' {output.val=new ReferenceExpression(output3.val).propagateConst(session)} ;
 
 REFERENCE_HEAD : ArrayList<Expression> =
-    KEY WS {appendT(output, output1.val)} <to:output> REFERENCE_TAIL | ;
+    VALUE WS {appendT(output, output1.val)} <to:output> REFERENCE_TAIL | ;
 
 REFERENCE_TAIL : ArrayList<Expression> =
-    '/' WS KEY WS {appendT(output, output3.val)} <to:output> REFERENCE_TAIL | WS ;
+    '/' WS VALUE WS {appendT(output, output3.val)} <to:output> REFERENCE_TAIL | WS ;
 
 ### Complex ###
 
 COMPLEX : Expression =
     '[' WSML COMPLEX_HEAD ']' {output.val=new ComplexExpression(output3.val).propagateConst(session)} |
-    '@' WS KEY WS EXPRESSION {output.val=new ComplexExpression(output3.val, output5.val).propagateConst(session)} ;
+    '@' WS VALUE WS VALUE {output.val=new ComplexExpression(output3.val, output5.val).propagateConst(session)} ;
 
 COMPLEX_HEAD : ArrayList<PairExpression> =
     <to:output> COMPLEX_CHILD <to:output> COMPLEX_TAIL | ;
 
-COMPLEX_CHILD : ArrayList<PairExpression> = # TODO: optimize!
-     KEY WS ':' WS EXPRESSION {appendT(output, new PairExpression(output1.val, output5.val))} |
-     EXPRESSION {appendT(output, new PairExpression(output1.val, null))} ;
+COMPLEX_CHILD : ArrayList<PairExpression> =
+    VALUE WS COMPLEX_CHILD2 {appendT(output, new PairExpression(output1.val, output3.val))} ;
+
+COMPLEX_CHILD2 : Expression =
+    ':' WS <to:output> VALUE | ;
 
 COMPLEX_TAIL : ArrayList<PairExpression> =
     SEP <to:output> COMPLEX_CHILD <to:output> COMPLEX_TAIL | WSML ;
@@ -220,12 +219,12 @@ COMPLEX_TAIL : ArrayList<PairExpression> =
 ### Type ###
 
 TYPE : Expression =
-    '::' WS EXPRESSION {output.val = new UnaryOperator(UnaryOperator.Operator.TypeExpression, output3.val).propagateConst(session)} ;
+    '::' WS VALUE {output.val = new UnaryOperator(UnaryOperator.Operator.TypeExpression, output3.val).propagateConst(session)} ;
 
 ### Function ###
 
 FUNC : Expression =
-    '->' WS EXPRESSION {output.val = new UnaryOperator(UnaryOperator.Operator.FunctionExpression, output3.val).propagateConst(session)} ;
+    '->' WS VALUE {output.val = new UnaryOperator(UnaryOperator.Operator.FunctionExpression, output3.val).propagateConst(session)} ;
 
 ### Expressions #############################################################
 # Expressions are what function bodies are made of.
@@ -547,7 +546,6 @@ CALL_TAIL : ArrayList<Expression> =
 EXPR_LEAF : Expression =
     IDENT     {output.val = new Variable(output1.val)} |
     EXPR_FUNC {output.val = output1.val} |
-    '(' WSML <to:output> EXPRESSION WSML ')' |
     <to:output> VALUE ;
 
 EXPR_FUNC : FunctionExpression =

@@ -52,7 +52,7 @@ public class TestXmlSerializer {
     @Test
     public void deserializeChars() throws StyxException {
         try(Session session = sf.createSession()) {
-            assertEquals("\"foo\"", XmlSerializer.deserialize(session, new StringReader("<?xml version=\"1.0\" ?><text>foo</text>")).toString());
+            assertEquals("foo", XmlSerializer.deserialize(session, new StringReader("<?xml version=\"1.0\" ?><text>foo</text>")).toString());
         }
     }
 
@@ -60,7 +60,7 @@ public class TestXmlSerializer {
     public void deserializeBytesNoBom() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
             byte[] bytes = toUtf8Bytes("<?xml version=\"1.0\" ?><text>foo</text>", false);
-            assertEquals("\"foo\"", XmlSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
+            assertEquals("foo", XmlSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
         }
     }
 
@@ -68,7 +68,7 @@ public class TestXmlSerializer {
     public void deserializeBytesBom() throws StyxException, IOException {
         try(Session session = sf.createSession()) {
             byte[] bytes = toUtf8Bytes("<?xml version=\"1.0\" ?><text>foo</text>", true);
-            assertEquals("\"foo\"", XmlSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
+            assertEquals("foo", XmlSerializer.deserialize(session, new ByteArrayInputStream(bytes)).toString());
         }
     }
 
@@ -79,11 +79,11 @@ public class TestXmlSerializer {
             byte[] bytes = toUtf8Bytes("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<complex>\n    <text key=\"1\">foo</text>\n    <text key=\"2\">bar</text>\n</complex>", true);
 
             StringWriter writer = new StringWriter();
-            XmlSerializer.serialize(session.deserialize("[\"foo\",\"bar\"]"), writer, true);
+            XmlSerializer.serialize(session.deserialize("[foo,bar]"), writer, true);
             assertEquals(chars, writer.toString());
 
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            XmlSerializer.serialize(session.deserialize("[\"foo\",\"bar\"]"), stream, true);
+            XmlSerializer.serialize(session.deserialize("[foo,bar]"), stream, true);
             assertArrayEquals(bytes, stream.toByteArray());
         }
     }
@@ -101,14 +101,14 @@ public class TestXmlSerializer {
         try(Session session = sf.createSession()) {
             assertEquals("<text></text>", serializeRoundTrip(session, session.deserialize("\"\"")));
             assertEquals("<text>123</text>", serializeRoundTrip(session, session.deserialize("123")));
-            assertEquals("<text>foo</text>", serializeRoundTrip(session, session.deserialize("\"foo\"")));
+            assertEquals("<text>foo</text>", serializeRoundTrip(session, session.deserialize("foo")));
 
             assertEquals("<reference></reference>", serializeRoundTrip(session, session.deserialize("[/]")));
             assertEquals("<reference><text>foo</text><text>bar</text></reference>", serializeRoundTrip(session, session.deserialize("[/foo/bar]")));
 
             assertEquals("<complex></complex>", serializeRoundTrip(session, session.deserialize("[]")));
-            assertEquals("<complex><text key=\"1\">foo</text><text key=\"2\">bar</text></complex>", serializeRoundTrip(session, session.deserialize("[\"foo\",\"bar\"]")));
-            assertEquals("<complex><text key=\"A\">foo</text><text key=\"B\">bar</text></complex>", serializeRoundTrip(session, session.deserialize("[A:\"foo\",B:\"bar\"]")));
+            assertEquals("<complex><text key=\"1\">foo</text><text key=\"2\">bar</text></complex>", serializeRoundTrip(session, session.deserialize("[foo,bar]")));
+            assertEquals("<complex><text key=\"A\">foo</text><text key=\"B\">bar</text></complex>", serializeRoundTrip(session, session.deserialize("[A:foo,B:bar]")));
 
             // a complex value with different values and even a complex key
             assertEquals(
@@ -119,7 +119,7 @@ public class TestXmlSerializer {
                     "<text key=\"year\">1977</text>"+
                     "<complex><key><complex><text key=\"k1\">v1</text><text key=\"k2\">v2</text></complex></key><text key=\"1\">foo</text><text key=\"2\">bar</text></complex>"+
                     "</complex>",
-                    serializeRoundTrip(session, session.deserialize("[ home:[/home/philip], name:\"philip\", tags:[@X \"x\", @Y \"y\"], year:1977, [k1:\"v1\",k2:\"v2\"]:[\"foo\",\"bar\"]]")));
+                    serializeRoundTrip(session, session.deserialize("[ home:[/home/philip], name:philip, tags:[@X x, @Y y], year:1977, [k1:v1,k2:v2]:[foo,bar]]")));
 
         }
     }
@@ -130,12 +130,12 @@ public class TestXmlSerializer {
             // a complex with a complex key (<key> instead of key=...)
             assertEquals(
                     "<complex><complex><key><complex><text key=\"k1\">v1</text><text key=\"k2\">v2</text></complex></key><text key=\"1\">foo</text><text key=\"2\">bar</text></complex></complex>",
-                    serializeRoundTrip(session, session.deserialize("[[k1:\"v1\",k2:\"v2\"]:[\"foo\",\"bar\"]]")));
+                    serializeRoundTrip(session, session.deserialize("[[k1:v1,k2:v2]:[foo,bar]]")));
 
             // a complex with a complex key and a text value (<value> after <key>)
             assertEquals(
                     "<complex><text><key><complex><text key=\"1\">complex</text><text key=\"2\">key</text></complex></key><value>text</value></text></complex>",
-                    serializeRoundTrip(session, session.deserialize("[[\"complex\",\"key\"]:\"text\"]")));
+                    serializeRoundTrip(session, session.deserialize("[[complex,key]:text]")));
         }
     }
 

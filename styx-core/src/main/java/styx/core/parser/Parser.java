@@ -410,6 +410,15 @@ public class Parser {
         {
             final Ref<Text> output1 = new Ref<Text>(null);
             final Ref_int pos1 = new Ref_int(pos0.val);
+            if(nt_IDENT(pos1, output1)) {
+                output.val = new Constant(output1.val);
+                pos.val = pos1.val;
+                return true;
+            }
+        }
+        {
+            final Ref<Text> output1 = new Ref<Text>(null);
+            final Ref_int pos1 = new Ref_int(pos0.val);
             if(nt_STRING(pos1, output1)) {
                 output.val = new Constant(output1.val);
                 pos.val = pos1.val;
@@ -452,11 +461,6 @@ public class Parser {
                 return true;
             }
         }
-        return false;
-    }
-
-    private boolean nt_KEY(final Ref_int pos, final Ref<Expression> output) {
-        final Ref_int pos0 = new Ref_int(pos.val);
         {
             final Ref_int pos1 = new Ref_int(pos0.val);
             if(tc(pos1, '(')) {
@@ -476,22 +480,6 @@ public class Parser {
                         }
                     }
                 }
-            }
-        }
-        {
-            final Ref<Text> output1 = new Ref<Text>(null);
-            final Ref_int pos1 = new Ref_int(pos0.val);
-            if(nt_IDENT(pos1, output1)) {
-                output.val = new Constant(output1.val);
-                pos.val = pos1.val;
-                return true;
-            }
-        }
-        {
-            final Ref_int pos1 = new Ref_int(pos0.val);
-            if(nt_VALUE(pos1, output)) {
-                pos.val = pos1.val;
-                return true;
             }
         }
         return false;
@@ -957,7 +945,7 @@ public class Parser {
         {
             final Ref<Expression> output1 = new Ref<Expression>(null);
             final Ref_int pos1 = new Ref_int(pos0.val);
-            if(nt_KEY(pos1, output1)) {
+            if(nt_VALUE(pos1, output1)) {
                 final Ref<Object> output2 = new Ref<Object>(null);
                 final Ref_int pos2 = new Ref_int(pos1.val);
                 if(nt_WS(pos2, output2)) {
@@ -986,7 +974,7 @@ public class Parser {
                 if(nt_WS(pos2, output2)) {
                     final Ref<Expression> output3 = new Ref<Expression>(null);
                     final Ref_int pos3 = new Ref_int(pos2.val);
-                    if(nt_KEY(pos3, output3)) {
+                    if(nt_VALUE(pos3, output3)) {
                         final Ref<Object> output4 = new Ref<Object>(null);
                         final Ref_int pos4 = new Ref_int(pos3.val);
                         if(nt_WS(pos4, output4)) {
@@ -1041,13 +1029,13 @@ public class Parser {
                 if(nt_WS(pos2, output2)) {
                     final Ref<Expression> output3 = new Ref<Expression>(null);
                     final Ref_int pos3 = new Ref_int(pos2.val);
-                    if(nt_KEY(pos3, output3)) {
+                    if(nt_VALUE(pos3, output3)) {
                         final Ref<Object> output4 = new Ref<Object>(null);
                         final Ref_int pos4 = new Ref_int(pos3.val);
                         if(nt_WS(pos4, output4)) {
                             final Ref<Expression> output5 = new Ref<Expression>(null);
                             final Ref_int pos5 = new Ref_int(pos4.val);
-                            if(nt_EXPRESSION(pos5, output5)) {
+                            if(nt_VALUE(pos5, output5)) {
                                 output.val=new ComplexExpression(output3.val, output5.val).propagateConst(session);
                                 pos.val = pos5.val;
                                 return true;
@@ -1083,37 +1071,43 @@ public class Parser {
         {
             final Ref<Expression> output1 = new Ref<Expression>(null);
             final Ref_int pos1 = new Ref_int(pos0.val);
-            if(nt_KEY(pos1, output1)) {
+            if(nt_VALUE(pos1, output1)) {
+                final Ref<Object> output2 = new Ref<Object>(null);
+                final Ref_int pos2 = new Ref_int(pos1.val);
+                if(nt_WS(pos2, output2)) {
+                    final Ref<Expression> output3 = new Ref<Expression>(null);
+                    final Ref_int pos3 = new Ref_int(pos2.val);
+                    if(nt_COMPLEX_CHILD2(pos3, output3)) {
+                        appendT(output, new PairExpression(output1.val, output3.val));
+                        pos.val = pos3.val;
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean nt_COMPLEX_CHILD2(final Ref_int pos, final Ref<Expression> output) {
+        final Ref_int pos0 = new Ref_int(pos.val);
+        {
+            final Ref_int pos1 = new Ref_int(pos0.val);
+            if(tc(pos1, ':')) {
                 final Ref<Object> output2 = new Ref<Object>(null);
                 final Ref_int pos2 = new Ref_int(pos1.val);
                 if(nt_WS(pos2, output2)) {
                     final Ref_int pos3 = new Ref_int(pos2.val);
-                    if(tc(pos3, ':')) {
-                        final Ref<Object> output4 = new Ref<Object>(null);
-                        final Ref_int pos4 = new Ref_int(pos3.val);
-                        if(nt_WS(pos4, output4)) {
-                            final Ref<Expression> output5 = new Ref<Expression>(null);
-                            final Ref_int pos5 = new Ref_int(pos4.val);
-                            if(nt_EXPRESSION(pos5, output5)) {
-                                appendT(output, new PairExpression(output1.val, output5.val));
-                                pos.val = pos5.val;
-                                return true;
-                            }
-                        }
+                    if(nt_VALUE(pos3, output)) {
+                        pos.val = pos3.val;
+                        return true;
                     }
                 }
             }
         }
         {
-            final Ref<Expression> output1 = new Ref<Expression>(null);
-            final Ref_int pos1 = new Ref_int(pos0.val);
-            if(nt_EXPRESSION(pos1, output1)) {
-                appendT(output, new PairExpression(output1.val, null));
-                pos.val = pos1.val;
-                return true;
-            }
+            pos.val = pos0.val;
+            return true;
         }
-        return false;
     }
 
     private boolean nt_COMPLEX_TAIL(final Ref_int pos, final Ref<ArrayList<PairExpression>> output) {
@@ -1153,7 +1147,7 @@ public class Parser {
                 if(nt_WS(pos2, output2)) {
                     final Ref<Expression> output3 = new Ref<Expression>(null);
                     final Ref_int pos3 = new Ref_int(pos2.val);
-                    if(nt_EXPRESSION(pos3, output3)) {
+                    if(nt_VALUE(pos3, output3)) {
                         output.val = new UnaryOperator(UnaryOperator.Operator.TypeExpression, output3.val).propagateConst(session);
                         pos.val = pos3.val;
                         return true;
@@ -1174,7 +1168,7 @@ public class Parser {
                 if(nt_WS(pos2, output2)) {
                     final Ref<Expression> output3 = new Ref<Expression>(null);
                     final Ref_int pos3 = new Ref_int(pos2.val);
-                    if(nt_EXPRESSION(pos3, output3)) {
+                    if(nt_VALUE(pos3, output3)) {
                         output.val = new UnaryOperator(UnaryOperator.Operator.FunctionExpression, output3.val).propagateConst(session);
                         pos.val = pos3.val;
                         return true;
@@ -3377,27 +3371,6 @@ public class Parser {
                 output.val = output1.val;
                 pos.val = pos1.val;
                 return true;
-            }
-        }
-        {
-            final Ref_int pos1 = new Ref_int(pos0.val);
-            if(tc(pos1, '(')) {
-                final Ref<Object> output2 = new Ref<Object>(null);
-                final Ref_int pos2 = new Ref_int(pos1.val);
-                if(nt_WSML(pos2, output2)) {
-                    final Ref_int pos3 = new Ref_int(pos2.val);
-                    if(nt_EXPRESSION(pos3, output)) {
-                        final Ref<Object> output4 = new Ref<Object>(null);
-                        final Ref_int pos4 = new Ref_int(pos3.val);
-                        if(nt_WSML(pos4, output4)) {
-                            final Ref_int pos5 = new Ref_int(pos4.val);
-                            if(tc(pos5, ')')) {
-                                pos.val = pos5.val;
-                                return true;
-                            }
-                        }
-                    }
-                }
             }
         }
         {

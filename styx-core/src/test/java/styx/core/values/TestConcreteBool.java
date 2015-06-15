@@ -21,8 +21,8 @@ public class TestConcreteBool {
 		assertTrue(ConcreteBool.FALSE.isText());
 		assertNotNull(ConcreteBool.FALSE.asBool());
 		assertNotNull(ConcreteBool.FALSE.asText());
-		assertEquals("\"false\"", ConcreteBool.FALSE.toString());
-		assertEquals("\"true\"", ConcreteBool.TRUE.toString());
+		assertEquals("false", ConcreteBool.FALSE.toString());
+		assertEquals("true", ConcreteBool.TRUE.toString());
 		assertFalse(ConcreteBool.FALSE.asBool().toBool());
 		assertTrue(ConcreteBool.TRUE.asBool().toBool());
 	}

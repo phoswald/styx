@@ -121,12 +121,12 @@ public abstract class TestAnySession extends TestBase {
             Value v2 = session.text("v2");
             Value v3 = session.text("v3");
 
-            session.write(session.root(), session.deserialize("[v1:\"v2\",v3:\"v4\",v5:\"v6\"]"));
-            assertEquals("[v1:\"v2\",v3:\"v4\",v5:\"v6\"]", session.serialize(session.read(session.root()), false));
-            assertEquals("\"v2\"", session.serialize(session.read(session.root().child(v1)), false));
-            assertEquals("",       session.serialize(session.read(session.root().child(v2)), false));
-            assertEquals("\"v4\"", session.serialize(session.read(session.root().child(v3)), false));
-            assertEquals("",       session.serialize(session.read(session.root().child(v3).child(v1)), false));
+            session.write(session.root(), session.deserialize("[v1:v2,v3:v4,v5:v6]"));
+            assertEquals("[v1:v2,v3:v4,v5:v6]", session.serialize(session.read(session.root()), false));
+            assertEquals("v2", session.serialize(session.read(session.root().child(v1)), false));
+            assertEquals("",   session.serialize(session.read(session.root().child(v2)), false));
+            assertEquals("v4", session.serialize(session.read(session.root().child(v3)), false));
+            assertEquals("",   session.serialize(session.read(session.root().child(v3).child(v1)), false));
 
             session.write(session.root(), null);
             assertNull(session.read(session.root()));
@@ -138,30 +138,30 @@ public abstract class TestAnySession extends TestBase {
             session.write(session.root(), session.complex());
             session.write(session.root().child(v1), v2);
             session.write(session.root().child(v2), v1);
-            assertEquals("[v1:\"v2\",v2:\"v1\"]", session.serialize(session.read(session.root()), false));
+            assertEquals("[v1:v2,v2:v1]", session.serialize(session.read(session.root()), false));
         }
     }
 
     @Test
     public void testWrite2() throws StyxException {
         try(Session session = sf.createSession()) {
-            session.write(session.root(), session.deserialize("[v1:\"v2\",v3:\"v4\",v5:\"v6\"]"));
+            session.write(session.root(), session.deserialize("[v1:v2,v3:v4,v5:v6]"));
             Value v1 = session.text("v1");
             Value v2 = session.text("v2");
             Value v3 = session.text("v3");
 
             session.write(session.root().child(v1), session.complex());
             session.write(session.root().child(v1).child(v2), v3);
-            assertEquals("\"v3\"", session.serialize(session.read(session.root().child(v1).child(v2)), false));
-            assertEquals("@v2 \"v3\"", session.serialize(session.read(session.root().child(v1)), false));
-            assertEquals("[v1:@v2 \"v3\",v3:\"v4\",v5:\"v6\"]", session.serialize(session.read(session.root()), false));
+            assertEquals("v3", session.serialize(session.read(session.root().child(v1).child(v2)), false));
+            assertEquals("@v2 v3", session.serialize(session.read(session.root().child(v1)), false));
+            assertEquals("[v1:@v2 v3,v3:v4,v5:v6]", session.serialize(session.read(session.root()), false));
         }
     }
 
     @Test
     public void testWrite3() throws StyxException {
         try(Session session = sf.createSession()) {
-            session.write(session.root(), session.deserialize("[v1:\"v2\",v3:\"v4\",v5:\"v6\"]"));
+            session.write(session.root(), session.deserialize("[v1:v2,v3:v4,v5:v6]"));
             Value v1 = session.text("v1");
             Value v3 = session.text("v3");
             Value v5 = session.text("v5");
@@ -175,18 +175,18 @@ public abstract class TestAnySession extends TestBase {
             session.write(session.root().child(v3).child(v3).child(v3), session.complex());
             session.write(session.root().child(v3).child(v3).child(v3).child(v3), v3);
             session.write(session.root().child(v5), null);
-            assertEquals("[v1:@v1 @v1 @v1 \"v1\",v3:@v3 @v3 @v3 \"v3\"]", session.serialize(session.read(session.root()), false));
+            assertEquals("[v1:@v1 @v1 @v1 v1,v3:@v3 @v3 @v3 v3]", session.serialize(session.read(session.root()), false));
 
             session.write(session.root().child(v1).child(v1).child(v1).child(v1), null);
             session.write(session.root().child(v3).child(v3).child(v3).child(v3), null);
             session.write(session.root().child(v5), v3);
             assertEquals("@v1 []", session.serialize(session.read(session.root().child(v1).child(v1)), false));
-            assertEquals("[v1:@v1 @v1 [],v3:@v3 @v3 [],v5:\"v3\"]", session.serialize(session.read(session.root()), false));
+            assertEquals("[v1:@v1 @v1 [],v3:@v3 @v3 [],v5:v3]", session.serialize(session.read(session.root()), false));
             assertEquals("@v3 []", session.serialize(session.read(session.root().child(v3).child(v3)), false));
 
             session.write(session.root(), session.text("xxx"));
             session.write(session.root(), session.text("xxx"));
-            assertEquals("\"xxx\"", session.serialize(session.read(session.root()), false));
+            assertEquals("xxx", session.serialize(session.read(session.root()), false));
             assertEquals("", session.serialize(session.read(session.root().child(v1).child(v1)), false));
             assertEquals("", session.serialize(session.read(session.root().child(v3).child(v3)), false));
         }
@@ -195,7 +195,7 @@ public abstract class TestAnySession extends TestBase {
     @Test
     public void testWriteSub1() throws StyxException {
         try(Session session = sf.createSession()) {
-            session.write(session.root(), session.deserialize("[v1:\"v2\",v3:\"v4\",v5:\"v6\"]"));
+            session.write(session.root(), session.deserialize("[v1:v2,v3:v4,v5:v6]"));
             try {
                 session.write(session.root().child(session.text("x")).child(session.text("y")).child(session.text("z")), null);
                 fail();

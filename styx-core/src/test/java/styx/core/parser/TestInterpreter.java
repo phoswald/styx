@@ -148,7 +148,10 @@ public class TestInterpreter {
             evaluate(session, "x := 100");
             evaluate(session, "y := 200");
             assertNull(evaluate(session, "null"));
-            assertEquals("\"void\"", evaluate(session, "\"void\"").toString());
+            assertEquals("void", evaluate(session, "void").toString());
+            assertEquals(false, evaluate(session, "false").asBool().toBool());
+            assertEquals(true, evaluate(session, "true").asBool().toBool());
+            assertEquals("void", evaluate(session, "\"void\"").toString());
             assertEquals(false, evaluate(session, "\"false\"").asBool().toBool());
             assertEquals(true, evaluate(session, "\"true\"").asBool().toBool());
             assertEquals(true, evaluate(session, "nix := ()->{}(), nix == null", 2).asBool().toBool());
@@ -165,11 +168,6 @@ public class TestInterpreter {
     public void testExprsComplex() throws IOException, StyxException {
         try(Session session = sf.createSession()) {
             String exprs = "x := 100, y := 200, ";
-//            assertEquals("[]", evaluate(session, exprs + "#[]", 3).toString());
-//            assertEquals("[x,y]", evaluate(session, exprs + "#[x,y]", 3).toString());
-//            assertEquals("{}", evaluate(session, exprs + "#{}", 3).toString());
-//            assertEquals("{x,y}", evaluate(session, exprs + "#{x,y}", 3).toString());
-//            assertEquals("{x:y,y:x}", evaluate(session, exprs + "#{x:y,y:x}", 3).toString());
 
             assertEquals("[/]", evaluate(session, exprs + "[/]", 3).toString());
             assertEquals("[/100]", evaluate(session, exprs + "[/][x]", 3).toString());
@@ -177,27 +175,28 @@ public class TestInterpreter {
             assertEquals("[/100/200/100]", evaluate(session, exprs + "[/][x][y][x]", 3).toString());
             assertEquals("[/100/200/100]", evaluate(session, exprs + "[/][100][200][100]", 3).toString());
             assertEquals("[]", evaluate(session, exprs + "[]", 3).toString());
-            assertEquals("[100]", evaluate(session, exprs + "[x]", 3).toString());
-            assertEquals("[100,200]", evaluate(session, exprs + "[x,y]", 3).toString());
-            assertEquals("[100,200]", evaluate(session, exprs + " \n [ \n x \n y \n ] \n ", 3).toString());
-            assertEquals("[100,200]", evaluate(session, exprs + " \n [ \n x , \n y \n ] \n ", 3).toString());
-            assertEquals("[100,200,100]", evaluate(session, exprs + "[x,y,x]", 3).toString());
-            assertEquals("[x:200,y:100]", evaluate(session, exprs + "[x:y,y:x]", 3).toString());
-            assertEquals("[100:200,200:100]", evaluate(session, exprs + "[(x):y,(y):x]", 3).toString());
+            assertEquals("[100]", evaluate(session, exprs + "[(x)]", 3).toString());
+            assertEquals("[100,200]", evaluate(session, exprs + "[(x),(y)]", 3).toString());
+            assertEquals("[100,200]", evaluate(session, exprs + " \n [ \n (x) \n (y) \n ] \n ", 3).toString());
+            assertEquals("[100,200]", evaluate(session, exprs + " \n [ \n (x) , \n (y) \n ] \n ", 3).toString());
+            assertEquals("[100,200,100]", evaluate(session, exprs + "[(x),(y),(x)]", 3).toString());
+            assertEquals("[100:y,200:x]", evaluate(session, exprs + "[(x):y,(y):x]", 3).toString());
+            assertEquals("[x:200,y:100]", evaluate(session, exprs + "[x:(y),y:(x)]", 3).toString());
+            assertEquals("[100:200,200:100]", evaluate(session, exprs + "[(x):(y),(y):(x)]", 3).toString());
             assertEquals("[100:200,200:100]", evaluate(session, exprs + "[(x):(y),(y):(x)]", 3).toString());
 
-            assertEquals("[x:200,y:100]", evaluate(session, exprs + " \n [ \n x : y \n y : x \n ] \n ", 3).toString());
-            assertEquals("[100:200,200:100]", evaluate(session, exprs + " \n [ \n (x) : y \n (y) : x \n ] \n ", 3).toString());
+            assertEquals("[x:200,y:100]", evaluate(session, exprs + " \n [ \n x : (y) \n y : (x) \n ] \n ", 3).toString());
             assertEquals("[100:200,200:100]", evaluate(session, exprs + " \n [ \n (x) : (y) \n (y) : (x) \n ] \n ", 3).toString());
 
-            assertEquals("[x:200,y:100]", evaluate(session, exprs + " \n [ \n x : y , \n y : x \n ] \n ", 3).toString());
-            assertEquals("[100:200,200:100]", evaluate(session, exprs + " \n [ \n (x) : y , \n (y) : x \n ] \n ", 3).toString());
+            assertEquals("[x:200,y:100]", evaluate(session, exprs + " \n [ \n x : (y) , \n y : (x) \n ] \n ", 3).toString());
+            assertEquals("[100:200,200:100]", evaluate(session, exprs + " \n [ \n (x) : (y) , \n (y) : (x) \n ] \n ", 3).toString());
 
-            assertEquals("[100:200,200:101]", evaluate(session, exprs + "[(x):y,(y):x,200:101]", 3).toString());
-            assertEquals("[1,2,3,5:5,7:6]", evaluate(session, exprs + "[1,2,3,null,5,null,6]", 3).toString());
-            assertEquals("[11:11,33:33]", evaluate(session, exprs + "[11:11,22:null,33:33]", 3).toString());
-            assertEquals("[100:200]", evaluate(session, exprs + "[(x):y]", 3).toString());
-            assertEquals("[300:400]", evaluate(session, exprs + "[(x+y): y+y]", 3).toString());
+            assertEquals("[100:200,200:101]", evaluate(session, exprs + "[(x):(y),(y):x,200:101]", 3).toString());
+            assertEquals("[1,2,3,5:5,7:6]", evaluate(session, exprs + "[1,2,3,(null),5,(null),6]", 3).toString());
+            assertEquals("[1,2,3,5:5,7:6]", evaluate(session, exprs + "[(1),(2),(3),(null),(5),(null),(6)]", 3).toString());
+            assertEquals("[11:11,33:33]", evaluate(session, exprs + "[11:11,22:(null),33:33]", 3).toString());
+            assertEquals("[100:200]", evaluate(session, exprs + "[(x):(y)]", 3).toString());
+            assertEquals("[300:400]", evaluate(session, exprs + "[(x+y): (y+y)]", 3).toString());
         }
     }
 
@@ -246,7 +245,7 @@ public class TestInterpreter {
     public void testForExpr() throws StyxException {
         try(Session session = sf.createSession()) {
             assertEquals("[1,4,9,16]", evaluate(session, " for(i := 1, i <= 4, i+=1) yield i*i ").toString());
-            assertEquals("[[1,1],[2,4],[3,9],[4,16]]", evaluate(session, " for(i := 1, i <= 4, i+=1) yield [i, i*i] ").toString());
+            assertEquals("[[1,1],[2,4],[3,9],[4,16]]", evaluate(session, " for(i := 1, i <= 4, i+=1) yield [(i), (i*i)] ").toString());
         }
     }
 
@@ -275,7 +274,7 @@ public class TestInterpreter {
     public void testForEachExpr() throws StyxException {
         try(Session session = sf.createSession()) {
             assertEquals("[1,4,9,16]", evaluate(session, " foreach(i in [1,2,3,4]) yield i*i ").toString());
-            assertEquals("[[1,1],[2,4],[3,9],[4,16]]", evaluate(session, " foreach(i in [1,2,3,4]) yield [i, i*i] ").toString());
+            assertEquals("[[1,1],[2,4],[3,9],[4,16]]", evaluate(session, " foreach(i in [1,2,3,4]) yield [(i), (i*i)] ").toString());
         }
     }
 
@@ -535,13 +534,13 @@ public class TestInterpreter {
                 }
             };
             Function func = session.function(def);
-            String funcstr = "-> @CompiledFunction \"test_1\"";
+            String funcstr = "-> @CompiledFunction test_1";
             assertEquals(funcstr, session.serialize(func, true));
             assertSame(def, session.deserialize(funcstr).asFunction().definition());
             assertSame(func, session.deserialize(funcstr));
             session.write(session.root(), func);
             assertEquals("xxxyyy", evaluate(session, "root :=== [/], (root[*])(\"xxx\",\"yyy\")", 2).asText().toTextString());
-            assertEquals("aaabbb", evaluate(session, "(-> @\"CompiledFunction\" \"test_1\")(\"aaa\",\"bbb\")").asText().toTextString());
+            assertEquals("aaabbb", evaluate(session, "(-> @CompiledFunction test_1)(\"aaa\",\"bbb\")").asText().toTextString());
 
             try {
                 new CompiledFunction(sf2.getRegistry(), "test_1", Determinism.PURE, 2) {
@@ -553,7 +552,7 @@ public class TestInterpreter {
             }
 
             try {
-                session.deserialize("-> @CompiledFunction \"test_X\"");
+                session.deserialize("-> @CompiledFunction test_X");
                 fail();
             } catch(StyxException e) {
                 assertTrue(e.getMessage().contains("Failed to deserialize"));
@@ -561,7 +560,7 @@ public class TestInterpreter {
             }
 
             try {
-                session.deserialize("-> @XXX \"YYY\"");
+                session.deserialize("-> @XXX YYY");
                 fail();
             } catch(StyxException e) {
                 assertTrue(e.getMessage().contains("Failed to deserialize"));
@@ -577,7 +576,7 @@ public class TestInterpreter {
             }
 
             try {
-                session.deserialize("-> \"foo\"");
+                session.deserialize("-> foo");
                 fail();
             } catch(StyxException e) {
                 assertTrue(e.getMessage().contains("Failed to deserialize"));
@@ -587,7 +586,7 @@ public class TestInterpreter {
 
         try(Session session = sf.createSession()) {
             try {
-                String funcstr = "-> @CompiledFunction \"test_1\"";
+                String funcstr = "-> @CompiledFunction test_1";
                 session.deserialize(funcstr);
                 fail();
             } catch(StyxException e) {
@@ -648,7 +647,7 @@ public class TestInterpreter {
     public void testFunctionLiterals() throws StyxException {
         try(Session session = sf.createSession()) {
             assertEquals(11, evaluate(session, "f1 := (x,y) -> { return x+y }\nf1(5,6)\n", 2).asNumber().toInteger());
-            assertEquals(11, evaluate(session, "f1 := -> @\"Function\" [ \"args\": [ [name: \"x\"], [name: \"y\"] ], \"body\": @\"Block\" [ @\"Return\" @\"Add\" [ \"expr1\": @\"Variable\" \"x\", \"expr2\": @\"Variable\" \"y\" ] ] ]\nf1(5,6)\n", 2).asNumber().toInteger());
+            assertEquals(11, evaluate(session, "f1 := -> @Function [ args: [ [name: x], [name: y] ], body: @Block [ @Return @Add [ expr1: @Variable x, expr2: @Variable y ] ] ]\nf1(5,6)\n", 2).asNumber().toInteger());
         }
     }
 
@@ -656,71 +655,11 @@ public class TestInterpreter {
     public void testFunctionLiteralsConsts() throws StyxException {
         try(Session session = sf.createSession()) {
             assertEquals(Math.PI, evaluate(session, "f := () -> { return math.PI } \n f() \n", 2).asNumber().toDouble(), 0.1);
-            assertEquals(Math.PI, evaluate(session, "f := -> @Function [ args: [ ], body: @Block [ @Return @Child [ expr1: @Variable \"math\", expr2: @Constant \"PI\" ] ] ] \n f() \n", 2).asNumber().toDouble(), 0.1);
+            assertEquals(Math.PI, evaluate(session, "f := -> @Function [ args: [ ], body: @Block [ @Return @Child [ expr1: @Variable math, expr2: @Constant PI ] ] ] \n f() \n", 2).asNumber().toDouble(), 0.1);
             assertEquals(Math.PI, evaluate(session, "f := () -> { return () -> { return math.PI } } \n f() () \n", 2).asNumber().toDouble(), 0.1);
-            assertEquals(Math.PI, evaluate(session, "f := -> @Function [ args: [ ], body: @Block [ @Return @Constant -> @Function [ args: [ ], body: @Block [ @Return @Child [ expr1: @Variable \"math\", expr2: @Constant \"PI\" ] ] ] ] ] \n f() ()\n", 2).asNumber().toDouble(), 0.1);
+            assertEquals(Math.PI, evaluate(session, "f := -> @Function [ args: [ ], body: @Block [ @Return @Constant -> @Function [ args: [ ], body: @Block [ @Return @Child [ expr1: @Variable math, expr2: @Constant PI ] ] ] ] ] \n f() ()\n", 2).asNumber().toDouble(), 0.1);
         }
     }
-
-//    @Test
-//    public void testQuoteUnquote() throws StyxException {
-//        try(Session session = sf.createSession()) {
-//            assertEquals("VVV", evaluate(session, "AAA := \"VVV\", AAA", 2).toString());
-//            assertEquals("AAA", evaluate(session, "AAA := \"VVV\", # AAA", 2).toString());
-//            assertEquals("VVV", evaluate(session, "AAA := \"VVV\", # @ AAA", 2).toString());
-//
-//            assertEquals("[VVV]", evaluate(session, "AAA := \"VVV\", [ AAA ]", 2).toString());
-//            assertEquals("[AAA]", evaluate(session, "AAA := \"VVV\", # [ AAA ]", 2).toString());
-//            assertEquals("[VVV]", evaluate(session, "AAA := \"VVV\", # [ @ AAA ]", 2).toString());
-//            assertEquals("[VVV]", evaluate(session, "AAA := \"VVV\", # @ [ AAA ]", 2).toString());
-//
-//            assertEquals("{VVV}", evaluate(session, "AAA := \"VVV\", { AAA }", 2).toString());
-//            assertEquals("{AAA}", evaluate(session, "AAA := \"VVV\", # { AAA }", 2).toString());
-//
-//            assertEquals("{AAA,VVV}", evaluate(session, "AAA := \"VVV\", # { AAA, @ AAA }", 2).toString());
-//            assertEquals("{AAA,VVV}", evaluate(session, "AAA := \"VVV\", # { AAA, @(AAA) }", 2).toString());
-//            assertEquals("{VVV,VVVVVV}", evaluate(session, "AAA := \"VVV\", { AAA, AAA ++ AAA }", 2).toString());
-//            assertEquals("{AAA,VVVVVV}", evaluate(session, "AAA := \"VVV\", # { AAA, @(AAA ++ AAA) }", 2).toString());
-//
-//            assertEquals("<VVV>VVV", evaluate(session, "AAA := \"VVV\", <AAA> AAA", 2).toString());
-//            assertEquals("<AAA>AAA", evaluate(session, "AAA := \"VVV\", # <AAA> AAA", 2).toString());
-//            assertEquals("<VVV>VVV", evaluate(session, "AAA := \"VVV\", # <@AAA> @AAA", 2).toString());
-//            assertEquals("<VVVVVV>VVVVVV", evaluate(session, "AAA := \"VVV\", # <@(AAA ++ AAA)> @(AAA ++ AAA)", 2).toString());
-//
-//            assertEquals("{x,value,y}", evaluate(session, "x := # value, # {x, @x, y}", 2).toString());
-//            assertEquals("{x,value,y}", evaluate(session, "x := # <tag> <subtag> value, # {x, @x.tag.subtag, y}", 2).toString());
-//        }
-//    }
-
-//    @Test
-//    public void testQuoteReservedWords() throws StyxException {
-//        try(Session session = sf.createSession()) {
-//            assertEquals("{foo,bar,0,1,10}",                   evaluate(session, "# {foo,bar,0,1,10}").toString());
-//            assertEquals("{if,else,switch,case}",              evaluate(session, "# {if,else,switch,case}").toString());
-//            assertEquals("{for,foreach,loop,while,do}",        evaluate(session, "# {for,foreach,loop,while,do}").toString());
-//            assertEquals("{return,break,continue}",            evaluate(session, "# {return,break,continue}").toString());
-//            assertEquals("{try,catch,finally,throw,retry}",    evaluate(session, "# {try,catch,finally,throw,retry}").toString());
-//            assertEquals("{0.0,0.1,1.0,1.1,-1,-0,-0.05,-1.5}", evaluate(session, "# {0.0,0.1,1.0,1.1,-1,-0,-0.05,-1.5}").toString());
-//        }
-//    }
-
-//    @Test
-//    public void testQuoteUnquoteInvalid() throws StyxException {
-//        try(Session session = sf.createSession()) {
-//            List<String> scripts = Arrays.asList(
-//                    "@ AAA",
-//                    "# # AAA",
-//                    "# @ @ AAA");
-//            for(String script : scripts) {
-//                try {
-//                    parse(session, script);
-//                    fail();
-//                } catch(StyxException e) {
-//                    assertTrue(e.getMessage().contains("Cannot handle"));
-//                }
-//            }
-//        }
-//    }
 
     @Test
     public void testQuoteParseReserved() throws StyxException {

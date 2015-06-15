@@ -41,18 +41,18 @@ public abstract class TestAnyTransaction extends TestBase {
             session.write(root, null);
             assertNull(session.read(root));
 
-            session.write(root, session.deserialize("[me:[name:\"philip\",age:36],you:[name:\"foo\",age:\"bar\"]]"));
+            session.write(root, session.deserialize("[me:[name:philip,age:36],you:[name:foo,age:bar]]"));
 
             Value val = session.read(root);
-            assertEquals("[me:[age:36,name:\"philip\"],you:[age:\"bar\",name:\"foo\"]]", session.serialize(val, false));
+            assertEquals("[me:[age:36,name:philip],you:[age:bar,name:foo]]", session.serialize(val, false));
 
             val = session.read(root.child(session.text("you")));
-            assertEquals("[age:\"bar\",name:\"foo\"]", session.serialize(val, false));
+            assertEquals("[age:bar,name:foo]", session.serialize(val, false));
 
-            session.write(root.child(session.text("new")), session.deserialize("[\"ene\",\"mene\",\"muh\",[\"x\",\"y\",\"z\"]]"));
+            session.write(root.child(session.text("new")), session.deserialize("[ene,mene,muh,[x,y,z]]"));
 
             val = session.read(root);
-            assertEquals("[me:[age:36,name:\"philip\"],new:[\"ene\",\"mene\",\"muh\",[\"x\",\"y\",\"z\"]],you:[age:\"bar\",name:\"foo\"]]", session.serialize(val, false));
+            assertEquals("[me:[age:36,name:philip],new:[ene,mene,muh,[x,y,z]],you:[age:bar,name:foo]]", session.serialize(val, false));
 
             session.write(root.child(session.text("new")), null);
             session.write(root.child(session.text("me")).child(session.text("age")), null);
@@ -60,7 +60,7 @@ public abstract class TestAnyTransaction extends TestBase {
             session.write(root.child(session.text("you")).child(session.text("age")), session.text("99"));
 
             val = session.read(root);
-            assertEquals("[me:@name \"philip\",you:[age:99,name:\"john doe\"]]", session.serialize(val, false));
+            assertEquals("[me:@name philip,you:[age:99,name:\"john doe\"]]", session.serialize(val, false));
 
             assertFalse(session.hasTransaction());
             session.beginTransaction();
@@ -112,7 +112,7 @@ public abstract class TestAnyTransaction extends TestBase {
     public void testAtomicReadWrite() throws IOException, StyxException {
         try(Session session = sf.createSession(); Session session2 = sf.createSession()) {
             session.write(session.root(), null);
-            session.evaluate("[/][*] = [foo:\"bar\",xxx:\"yyy\"]");
+            session.evaluate("[/][*] = [foo:bar,xxx:yyy]");
 
             assertEquals("bar", evaluate(session, "[/foo][*]").asText().toTextString());
             assertEquals("bar", evaluate(session2, "[/foo][*]").asText().toTextString());
@@ -120,8 +120,8 @@ public abstract class TestAnyTransaction extends TestBase {
             session.evaluate("\n r1 :=== [/foo] \n r2 :=== [/xxx] \n atomic { \n r1[*]=\"baz\" \n r2[*]=\"YYY\" \n } \n ");
             session2.evaluate("\n atomic { \n atomic { \n [/zzz][*] = \"ZZZ\" \n } \n } \n ");
 
-            assertEquals("[foo:\"baz\",xxx:\"YYY\",zzz:\"ZZZ\"]", session.serialize(evaluate(session, "[/][*]"), false));
-            assertEquals("[foo:\"baz\",xxx:\"YYY\",zzz:\"ZZZ\"]", session2.serialize(evaluate(session2, "[/][*]"), false));
+            assertEquals("[foo:baz,xxx:YYY,zzz:ZZZ]", session.serialize(evaluate(session, "[/][*]"), false));
+            assertEquals("[foo:baz,xxx:YYY,zzz:ZZZ]", session2.serialize(evaluate(session2, "[/][*]"), false));
         }
     }
 
@@ -129,7 +129,7 @@ public abstract class TestAnyTransaction extends TestBase {
     public void testAtomicCall() throws StyxException {
         try(Session session = sf.createSession()) {
             assertEquals(13, evaluate(session, "f :=== (x,y) -> { return x+y },                                                                                                                   sum := 0, atomic { sum = sum + f(6,7) }, sum", 4).asNumber().toInteger());
-            assertEquals(13, evaluate(session, "f :=== -> @Function [ args: [ [name: \"x\"], [name: \"y\"] ], body: @Block [ @Return @Add [ expr1: @Variable \"x\", expr2: @Variable \"y\" ] ] ], sum := 0, atomic { sum = sum + f(6,7) }, sum", 4).asNumber().toInteger());
+            assertEquals(13, evaluate(session, "f :=== -> @Function [ args: [ [name: x], [name: y] ], body: @Block [ @Return @Add [ expr1: @Variable x, expr2: @Variable y ] ] ], sum := 0, atomic { sum = sum + f(6,7) }, sum", 4).asNumber().toInteger());
         }
     }
 

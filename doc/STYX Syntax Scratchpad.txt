@@ -21,8 +21,7 @@ Literals
     0x7F88              Binary literal
     0xCAFEBABE          Binary literal
 
-    foo                 String literal, unquoted (only as a key)
-    foo2                String literal, unquoted (only as a key)
+    foo                 String literal, unquoted
     "foo"               String literal, quoted
     "hello world"       String literal, quoted
     "multi\nline"       String literal, quoted, with escape sequences

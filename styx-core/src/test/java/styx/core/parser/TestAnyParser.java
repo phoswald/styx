@@ -38,13 +38,17 @@ public abstract class TestAnyParser {
 
     @Test
     public void testVoid() throws StyxException {
-        testRoundTrip("\"void\"", session.empty());
+        testRoundTrip("void", session.empty());
+        testParse("\"void\"", session.empty());
+        testParse("  void  ", session.empty());
         testParse("  \"void\"  ", session.empty());
     }
 
     @Test
     public void testBool() throws StyxException {
-        testRoundTrip("\"true\"", session.bool(true));
+        testRoundTrip("true", session.bool(true));
+        testParse("\"true\"", session.bool(true));
+        testParse("  true  ", session.bool(true));
         testParse("  \"true\"  ", session.bool(true));
     }
 
@@ -56,7 +60,9 @@ public abstract class TestAnyParser {
         testRoundTrip("123.45", session.number(123.45));
         testRoundTrip("1E27", session.number("1E27"));
         testRoundTrip("1.5E27", session.number("1.5E27"));
+        testParse("\"1234\"", session.number(1234));
         testParse("  1234  ", session.number(1234));
+        testParse("  \"1234\"  ", session.number(1234));
     }
 
     @Test
@@ -75,7 +81,9 @@ public abstract class TestAnyParser {
         testRoundTrip("0x", session.binary(""));
         testRoundTrip("0x0123456789ABCDEF", session.binary("0123456789ABCDEF"));
         testRoundTrip("0xDEADBEEF", session.binary("DEADBEEF"));
+        testParse("\"0xDEADBEEF\"", session.binary("DEADBEEF"));
         testParse("  0xDEADBEEF  ", session.binary("DEADBEEF"));
+        testParse("  \"0xDEADBEEF\"  ", session.binary("DEADBEEF"));
     }
 
     @Test
@@ -86,35 +94,22 @@ public abstract class TestAnyParser {
     @Test
     public void testText() throws StyxException {
         // everything has to be quoted at top level
-        testRoundTrip("\"abcd\"", session.text("abcd"));
-        testRoundTrip("\"ABCD\"", session.text("ABCD"));
-        testRoundTrip("\"_x_\"", session.text("_x_"));
-        testRoundTrip("\"€URO\"", session.text("€URO"));
+        testRoundTrip("abcd", session.text("abcd"));
+        testRoundTrip("ABCD", session.text("ABCD"));
+        testRoundTrip("_x_", session.text("_x_"));
+        testRoundTrip("€URO", session.text("€URO"));
         testRoundTrip("\"foo bar\"", session.text("foo bar"));
         testRoundTrip("\"\\\\\'\\\"\\t\\r\\n\"", session.text("\\\'\"\t\r\n"));
         testRoundTrip("\"\\u0001\"", session.text("\u0001"));
         testRoundTrip("\"\\u001F\"", session.text("\u001F"));
-        testRoundTrip("\"\u0100\"", session.text("\u0100"));
-        testRoundTrip("\"\uFFEE\"", session.text("\uFFEE"));
-        testParse("  \"abcd\"   ", session.text("abcd"));
+        testRoundTrip("\u0100", session.text("\u0100"));
+        testRoundTrip("\uFFEE", session.text("\uFFEE"));
+        testParse("\"abcd\"", session.text("abcd"));
+        testParse("  abcd  ", session.text("abcd"));
+        testParse("  \"abcd\"  ", session.text("abcd"));
         testParse("  \"\"   ", session.text(""));
         testParse("  \" \\\\ \\' ' \\\" \"   ", session.text(" \\ ' ' \" "));
         testParse("  \" \\u0061 \\u0062 \\u0063 \\u0064 \"   ", session.text(" a b c d "));
-    }
-
-    @Test
-    public void testTextNested() throws StyxException {
-        // identifiers dont have to be quoted, which includes letters >= 0x0100
-        testRoundTrip("[/abcd]", session.root().child(session.text("abcd")));
-        testRoundTrip("[/ABCD]", session.root().child(session.text("ABCD")));
-        testRoundTrip("[/_x_]", session.root().child(session.text("_x_")));
-        testRoundTrip("[/€URO]", session.root().child(session.text("€URO")));
-        testRoundTrip("[/\"foo bar\"]", session.root().child(session.text("foo bar")));
-        testRoundTrip("[/\"\\\\\'\\\"\\t\\r\\n\"]", session.root().child(session.text("\\\'\"\t\r\n")));
-        testRoundTrip("[/\"\\u0001\"]", session.root().child(session.text("\u0001")));
-        testRoundTrip("[/\"\\u001F\"]", session.root().child(session.text("\u001F")));
-        testRoundTrip("[/\u0100]", session.root().child(session.text("\u0100")));
-        testRoundTrip("[/\uFFEE]", session.root().child(session.text("\uFFEE")));
     }
 
     @Test
@@ -130,9 +125,29 @@ public abstract class TestAnyParser {
         testRoundTrip("[/]", session.root());
         testRoundTrip("[/1]", session.root().child(session.number(1)));
         testRoundTrip("[/1/2]", session.root().child(session.number(1)).child(session.number(2)));
+        testRoundTrip("[/abcd]", session.root().child(session.text("abcd")));
+        testRoundTrip("[/ABCD]", session.root().child(session.text("ABCD")));
+        testRoundTrip("[/_x_]", session.root().child(session.text("_x_")));
+        testRoundTrip("[/€URO]", session.root().child(session.text("€URO")));
+        testRoundTrip("[/\"foo bar\"]", session.root().child(session.text("foo bar")));
+        testRoundTrip("[/\"\\\\\'\\\"\\t\\r\\n\"]", session.root().child(session.text("\\\'\"\t\r\n")));
+        testRoundTrip("[/\"\\u0001\"]", session.root().child(session.text("\u0001")));
+        testRoundTrip("[/\"\\u001F\"]", session.root().child(session.text("\u001F")));
+        testRoundTrip("[/\u0100]", session.root().child(session.text("\u0100")));
+        testRoundTrip("[/\uFFEE]", session.root().child(session.text("\uFFEE")));
         testParse("  [/]  ", session.root());
         testParse("  [/  1]    ", session.root().child(session.number(1)));
         testParse("  [/  1  / 2]  ", session.root().child(session.number(1)).child(session.number(2)));
+        testParse("  [/\"abcd\"]  ", session.root().child(session.text("abcd")));
+        testParse("  [/\"ABCD\"]  ", session.root().child(session.text("ABCD")));
+        testParse("  [/\"_x_\"]  ", session.root().child(session.text("_x_")));
+        testParse("  [/\"€URO\"]  ", session.root().child(session.text("€URO")));
+        testParse("  [/\"foo bar\"]  ", session.root().child(session.text("foo bar")));
+        testParse("  [/\"\\\\\'\\\"\\t\\r\\n\"]  ", session.root().child(session.text("\\\'\"\t\r\n")));
+        testParse("  [/\"\\u0001\"]  ", session.root().child(session.text("\u0001")));
+        testParse("  [/\"\\u001F\"]  ", session.root().child(session.text("\u001F")));
+        testParse("  [/\"\u0100\"]  ", session.root().child(session.text("\u0100")));
+        testParse("  [/\"\uFFEE\"]  ", session.root().child(session.text("\uFFEE")));
     }
 
     @Test
@@ -147,19 +162,23 @@ public abstract class TestAnyParser {
     @Test
     public void testComplex() throws StyxException {
         testRoundTrip("[]", session.complex());
-        testRoundTrip("@key \"val\"", session.complex(session.text("key"), session.text("val")));
-        testRoundTrip("[123:\"val\"]", session.complex(session.text("123"), session.text("val")));
-        testRoundTrip("[key1:\"val1\",key2:\"val2\"]", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
-        testRoundTrip("[\"val1\",\"val2\"]", session.complex(session.number(1), session.text("val1")).put(session.number(2), session.text("val2")));
-        testParse("  @  key   \"val\"  ", session.complex(session.text("key"), session.text("val")));
+        testRoundTrip("@key val", session.complex(session.text("key"), session.text("val")));
+        testRoundTrip("[123:val]", session.complex(session.text("123"), session.text("val")));
+        testRoundTrip("[key1:val1,key2:val2]", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
+        testRoundTrip("[val1,val2]", session.complex(session.number(1), session.text("val1")).put(session.number(2), session.text("val2")));
+        testParse("@\"key\" \"val\"", session.complex(session.text("key"), session.text("val")));
+        testParse("[\"123\":\"val\"]", session.complex(session.text("123"), session.text("val")));
+        testParse("[\"key1\":\"val1\",\"key2\":\"val2\"]", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
+        testParse("[\"val1\",\"val2\"]", session.complex(session.number(1), session.text("val1")).put(session.number(2), session.text("val2")));
+        testParse("  @  key   val  ", session.complex(session.text("key"), session.text("val")));
         testParse(" @tag1 @tag2 \"void\"  ", session.complex(session.text("tag1"), session.complex(session.text("tag2"), session.text("void"))));
         testParse(" [/ @tag1 @tag2 \"void\"  ]  ", session.root().child(session.complex(session.text("tag1"), session.complex(session.text("tag2"), session.text("void")))));
-        testParse("  [  key1  :  \"val1\"  ,  key2  :  \"val2\"  ]  ", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
-        testParse(" \n [ \n key1  :  \"val1\" \n    key2  :  \"val2\" \n  ] \n ", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
-        testParse(" \n [ \n key1  :  \"val1\" \n ,  key2  :  \"val2\" \n  ] \n ", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
-        testParse(" \n [ \n key1  :  \"val1\" , \n  key2  :  \"val2\" \n  ] \n ", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
-        testParse(" [ @person [ key1:\"val1\", key2:\"val2\" ] ] ", session.complex(session.complex(session.text("person"), session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")))));
-        testParse(" [ me: @person [ key1:\"val1\", key2:\"val2\" ] ] ", session.complex(session.text("me"), session.complex(session.text("person"), session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")))));
+        testParse("  [  key1  :  val1  ,  key2  :  val2  ]  ", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
+        testParse(" \n [ \n key1  :  val1 \n    key2  :  val2 \n  ] \n ", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
+        testParse(" \n [ \n key1  :  val1 \n ,  key2  :  val2 \n  ] \n ", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
+        testParse(" \n [ \n key1  :  val1 , \n  key2  :  val2 \n  ] \n ", session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")));
+        testParse(" [ @person [ key1:val1, key2:val2 ] ] ", session.complex(session.complex(session.text("person"), session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")))));
+        testParse(" [ me: @person [ key1:val1, key2:val2 ] ] ", session.complex(session.text("me"), session.complex(session.text("person"), session.complex(session.text("key1"), session.text("val1")).put(session.text("key2"), session.text("val2")))));
         testParse(" [ key: @tag1 @tag2 \"void\" ] ", session.complex(session.text("key"), session.complex(session.text("tag1"), session.complex(session.text("tag2"), session.text("void")))));
         testParse(" [ @tag1 @tag2 \"void\" ] ", session.complex(session.complex(session.text("tag1"), session.complex(session.text("tag2"), session.text("void")))));
     }

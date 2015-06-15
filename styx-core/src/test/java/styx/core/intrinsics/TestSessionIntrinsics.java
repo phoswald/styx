@@ -16,16 +16,16 @@ public class TestSessionIntrinsics extends Base {
     @Test
     public void testBrowse() throws StyxException {
         try(Session session = sf.createSession()) {
-            session.evaluate("[/][*] = [ A: \"B\", X: \"Y\" ]");
-            assertEquals("[\"A\",\"X\"]", evaluate(session, "session.browse([/])").toString());
+            session.evaluate("[/][*] = [ A: B, X: Y ]");
+            assertEquals("[A,X]", evaluate(session, "session.browse([/])").toString());
         }
     }
 
     @Test
     public void testSerialize() throws StyxException {
         try(Session session = sf.createSession()) {
-            assertEquals("\"[A:\\\"B\\\",C:\\\"D\\\"]\"", evaluate(session, " session.serialize([C:\"D\",A:\"B\"], \"false\") ").toString());
-            assertEquals("[A:\"B\",C:\"D\"]", evaluate(session, " session.deserialize(\"[C:\\\"D\\\",A:\\\"B\\\"]\") ").toString());
+            assertEquals("\"[A:B,C:D]\"", evaluate(session, " session.serialize([C:D,A:B], false) ").toString());
+            assertEquals("[A:B,C:D]", evaluate(session, " session.deserialize(\"[C:D,A:B]\") ").toString());
         }
     }
 

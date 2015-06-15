@@ -22,7 +22,7 @@ public class TestTypes {
 	public void test() throws StyxException {
 		try(Session session = sf.createSession()) {
 			Type type1 = makeType(session, ":: @Simple [ ]");
-			Type type2 = makeType(session, ":: @Simple [ non_null: \"true\" ]");
+			Type type2 = makeType(session, ":: @Simple [ non_null: true ]");
 
 			assertNotNull(type1);
 			assertTrue(type1.validate(null));

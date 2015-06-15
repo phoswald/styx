@@ -3,52 +3,52 @@
     ]
     factories: [
         memory: [
-            provider: "memory"
+            provider: memory
             parameters: [
-                shared: "true"
+                shared: true
             ]
         ]
         file: [
-            provider: "file"
+            provider: file
             parameters: [
                 filename: "../../styx-data/database.st"
-                indent: "true"
+                indent: true
             ]
         ]
         derby_local: [
-            provider: "jdbc"
+            provider: jdbc
             parameters: [
                 connstr: "jdbc:derby:../../styx-data/database.derby.db;create=true"
-                dialect: "Derby"
+                dialect: Derby
             ]
         ]
         sqlite_local: [
-            provider: "jdbc"
+            provider: jdbc
             parameters: [
                 connstr: "jdbc:sqlite:../../styx-data/database.sqlite.db"
-                dialect: "SQLite"
+                dialect: SQLite
             ]
         ]
         mysql_local: [
-            provider: "jdbc"
+            provider: jdbc
             parameters: [
                 connstr: "jdbc:mysql://localhost:3306/styx_test?user=test&password=test"
-                dialect: "MySQL"
+                dialect: MySQL
             ]
         ]
         mssql_isag: [
-            provider: "jdbc"
+            provider: jdbc
             parameters: [
                 connstr: "jdbc:jtds:sqlserver://SRV6030-CUST-01/styx_test;instance=SQL2005;user=agsb;password=agsbtest"
-                dialect: "MSSQL"
+                dialect: MSSQL
             ]
         ]
         lmdb: [
-            provider: "lmdb"
+            provider: lmdb
             parameters: [
                 path: "../../styx-data/database.lmdb"
-                readonly: "false"
-                nosync: "false"
+                readonly: false
+                nosync: false
             ]
         ]
     ]

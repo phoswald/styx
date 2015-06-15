@@ -20,7 +20,7 @@ public class TestConcreteVoid {
 		assertTrue(ConcreteVoid.VOID.isText());
 		assertNotNull(ConcreteVoid.VOID.asVoid());
 		assertNotNull(ConcreteVoid.VOID.asText());
-		assertEquals("\"void\"", ConcreteVoid.VOID.toString());
+		assertEquals("void", ConcreteVoid.VOID.toString());
 	}
 
 	@Test

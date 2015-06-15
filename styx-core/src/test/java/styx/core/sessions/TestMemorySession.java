@@ -32,8 +32,8 @@ public class TestMemorySession extends TestAnySession {
             try(Session session2 = SessionManager.createMemorySessionFactory(false, session.deserialize("1234")).createSession()) {
                 assertEquals("1234", session2.read(session.root()).toString());
             }
-            try(Session session2 = SessionManager.createMemorySessionFactory(false, session.deserialize("[a:\"b\",c:\"d\"]")).createSession()) {
-                assertEquals("[a:\"b\",c:\"d\"]", session2.read(session.root()).toString());
+            try(Session session2 = SessionManager.createMemorySessionFactory(false, session.deserialize("[a:b,c:d]")).createSession()) {
+                assertEquals("[a:b,c:d]", session2.read(session.root()).toString());
             }
         }
     }

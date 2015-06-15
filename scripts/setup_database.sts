@@ -8,7 +8,7 @@ console.write("Users...")
     philip: [
         name: "Philip Oswald"
         birth: "1977-10-26"
-        gender: "M"
+        gender: M
     ]
 ]
 
@@ -31,9 +31,9 @@ console.write("Customers...")
         credit: 1000
         address: [
           street: "Street 1"
-          city: "Springfield"
+          city: Springfield
           zip: 1234
-          country: "Switzerland"
+          country: Switzerland
         ]
     ]
     C2: [
@@ -41,9 +41,9 @@ console.write("Customers...")
         credit: 100
         address: [
           street: "Street 2"
-          city: "Springfield"
+          city: Springfield
           zip: 1234
-          country: "Switzerland"
+          country: Switzerland
         ]
     ]
 ]
@@ -120,7 +120,7 @@ console.write("Web Pages...")
 ]
 
 [/urls/Dynamic1][*] = @Dynamic [
-    Func: (ref, props, params, headers, cookies) -> {
+    Func: ((ref, props, params, headers, cookies) -> {
         return @StaticHtml [
             ContentType: "text/html"
             Body: @html [
@@ -128,16 +128,16 @@ console.write("Web Pages...")
                     @title "This is the title"
                 ]
                 @body [
-                    @p "Hello, user " ++ ([/users/philip/name][*]) ++ "!" /* TODO interpolation */
-                    @p "The current time is " ++ (time.current_text()) ++ " and you are from " ++ (props.remote_host) ++ "." /* TODO interpolation */
+                    @p ("Hello, user " ++ [/users/philip/name][*] ++ "!") /* TODO interpolation */
+                    @p ("The current time is " ++ time.current_text() ++ " and you are from " ++ props.remote_host ++ ".") /* TODO interpolation */
                 ]
             ]
         ]
-    }
+    })
 ]
 
 [/urls/Dynamic2][*] = @Dynamic [
-    Func: (ref, props, params, headers, cookies) -> {
+    Func: ((ref, props, params, headers, cookies) -> {
         return @StaticHtml [
             ContentType: "text/html"
             Body: @html [
@@ -148,15 +148,15 @@ console.write("Web Pages...")
                 @body [
                     @h1 "HTTP request test"
                     @p "Reference:"
-                    @pre session.serialize(ref, true)
+                    @pre (session.serialize(ref, true))
                     @p "Request properties:"
-                    @pre session.serialize(props, true)
+                    @pre (session.serialize(props, true))
                     @p "Request parameters:"
-                    @pre session.serialize(params, true)
+                    @pre (session.serialize(params, true))
                     @p "Request headers:"
-                    @pre session.serialize(headers, true)
+                    @pre (session.serialize(headers, true))
                     @p "Request cookies:"
-                    @pre session.serialize(cookies, true)
+                    @pre (session.serialize(cookies, true))
                 ]
             ]
             Headers: [
@@ -165,29 +165,29 @@ console.write("Web Pages...")
             ]
             Cookies: [
                 [
-                    name: "MyCookieName"
-                    value: "MyCookieValue(" ++ (time.current_millis()) ++ ")" /* TODO interpolation */
-                    comment: "ThisIsAComment"
+                    name: MyCookieName
+                    value: ("MyCookieValue(" ++ time.current_millis() ++ ")" /* TODO interpolation */)
+                    comment: ThisIsAComment
                     max_age: 120
                     http_only: true
                 ]
             ]
         ]
-    }
+    })
 ]
 
 [/urls/JavaLogo][*] = @StaticBinary [
     ContentType: "image/png"
-    Body: file.read_binary("../scripts/java_logo.png")
+    Body: (file.read_binary("../scripts/java_logo.png"))
 ]
 
 [/urls/SqliteLogo][*] = @StaticBinary [
     ContentType: "image/gif"
-    Body: file.read_binary("../scripts/sqlite_logo.gif")
+    Body: (file.read_binary("../scripts/sqlite_logo.gif"))
 ]
 
 [/urls/index][*] = @Dynamic [
-    Func: (ref, props, params, headers, cookies) -> {
+    Func: ((ref, props, params, headers, cookies) -> {
         return @StaticHtml [
             ContentType: "text/html"
             Body: @html [
@@ -197,15 +197,15 @@ console.write("Web Pages...")
                 @body [
                     @h1 "STYX Site Index"
                     // TODO get rid of @div
-                    @div foreach(v in session.browse([/urls])) yield @p [
-                        @a [ @"#href" v, v ]
+                    @div (foreach(v in session.browse([/urls])) yield @p [
+                        @a [ @"#href" (v), (v) ]
                         " "
-                        @a [ @"#href" "../rest/urls/" ++ v, "[Source]" ]
-                    ]
+                        @a [ @"#href" ("../rest/urls/" ++ v), "[Source]" ]
+                    ])
                 ]
             ]
         ]
-    }
+    })
 ]
 
 console.write("Dumping...")

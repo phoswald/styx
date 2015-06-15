@@ -75,7 +75,7 @@ public final class Serializer {
                 stm.write(BOM);
             }
             if(val != null) {
-                serializeValue(val, stm, false, indent ? 0 : -1, indent ? 4 : 0);
+                serializeValue(val, stm, indent ? 0 : -1, indent ? 4 : 0);
                 stm.flush();
             }
         } catch(RuntimeException | IOException e) {
@@ -126,7 +126,7 @@ public final class Serializer {
             }
             int c = skipWhite(stm2, true);
             stm2.rewind(1);
-            Value val = deserializeValue(session, stm2, false);
+            Value val = deserializeValue(session, stm2);
             c = skipWhite(stm2, true);
             if(c != -1) {
                 throw new StyxException(buildMessage(stm2, "End of input expected after value."));
@@ -137,9 +137,9 @@ public final class Serializer {
         }
     }
 
-    private static void serializeValue(Value val, Writer stm, boolean key, int curIndent, int deltaIndent) throws IOException {
+    private static void serializeValue(Value val, Writer stm, int curIndent, int deltaIndent) throws IOException {
         if(val.isText()) {
-            serializeText(val.asText(), stm, !key);
+            serializeText(val.asText(), stm);
         } else if(val.isReference()) {
             serializeReference(val.asReference(), stm, curIndent);
         } else if(val.isComplex()) {
@@ -151,7 +151,7 @@ public final class Serializer {
         }
     }
 
-    private static Value deserializeValue(Session session, LineReader stm, boolean key) throws IOException, StyxException {
+    private static Value deserializeValue(Session session, LineReader stm) throws IOException, StyxException {
         int c = skipWhite(stm, false);
         if(c == -1) {
             return null;
@@ -161,9 +161,6 @@ public final class Serializer {
             return deserializeTextNumberOrBinary(session, stm);
         } else if(isLetter(c)) {
             stm.rewind(1);
-            if(!key) {
-                throw new StyxException(buildMessage(stm, "Invalid value: Unquoted identifiers are only allowed as complex keys, tag keys or reference parts."));
-            }
             return deserializeTextUnquoted(session, stm);
         } else if(c == '"') {
             stm.rewind(1);
@@ -204,14 +201,10 @@ public final class Serializer {
         }
     }
 
-    private static void serializeText(Text val, Writer stm, boolean quote) throws IOException {
+    private static void serializeText(Text val, Writer stm) throws IOException {
         String  text   = val.toTextString();
         int     length = text.length();
-        if(val.isNumber() || val.isBinary()) {
-            quote = false; // never quote numbers
-        } else if(!quote && !isIdent(text)) {
-            quote = true; // quote strange stuff
-        }
+        boolean quote  = !val.isNumber() && !val.isBinary() && !isIdent(text);
         if(quote) {
             stm.append('"');
         }
@@ -375,7 +368,7 @@ public final class Serializer {
             if(i > 1) {
                 stm.append('/');
             }
-            serializeValue(val.parent(i).name(), stm, true, curIndent, 0);
+            serializeValue(val.parent(i).name(), stm, curIndent, 0);
         }
         stm.append(']');
     }
@@ -391,7 +384,7 @@ public final class Serializer {
         if(c != ']') {
             stm.rewind(1);
             do {
-                Value child = deserializeValue(session, stm, true);
+                Value child = deserializeValue(session, stm);
                 if(child == null) {
                     throw new StyxException(buildMessage(stm, "Invalid reference value: part expected."));
                 }
@@ -418,9 +411,9 @@ public final class Serializer {
             Pair<Value, Value> pair = val.single();
             if(!pair.key().isNumber() && !pair.key().isBinary() && isIdent(pair.key().asText().toTextString())) {
                 stm.append('@');
-                serializeValue(pair.key(), stm, true, 0, 0);
+                serializeValue(pair.key(), stm, 0, 0);
                 stm.append(' ');
-                serializeValue(pair.val(), stm, false, curIndent, deltaIndent);
+                serializeValue(pair.val(), stm, curIndent, deltaIndent);
                 return;
             }
         }
@@ -442,13 +435,13 @@ public final class Serializer {
             if(child.key().isNumber() && child.key().asNumber().isInteger() && child.key().asNumber().toInteger() == autokey) {
                 autokey++;
             } else {
-                serializeValue(child.key(), stm, true, curIndent, 0);
+                serializeValue(child.key(), stm, curIndent, 0);
                 stm.append(':');
                 if(curIndent >= 0) {
                     stm.append(' ');
                 }
             }
-            serializeValue(child.val(), stm, false, curIndent + deltaIndent, deltaIndent);
+            serializeValue(child.val(), stm, curIndent + deltaIndent, deltaIndent);
             first = false;
         }
         if(deltaIndent > 0) {
@@ -470,13 +463,13 @@ public final class Serializer {
         if(c != ']') {
             stm.rewind(1);
             do {
-                Value childKey = deserializeValue(session, stm, true); // TODO: if no ':', key must be false.
+                Value childKey = deserializeValue(session, stm);
                 if(childKey == null) {
                     throw new StyxException(buildMessage(stm, "Invalid complex value: key expected."));
                 }
                 c = skipWhite(stm, false);
                 if(c == ':') {
-                    Value childVal = deserializeValue(session, stm, false);
+                    Value childVal = deserializeValue(session, stm);
                     if(childVal == null) {
                         throw new StyxException("Invalid complex value: value expected.");
                     }
@@ -500,11 +493,11 @@ public final class Serializer {
         if(c != '@') {
             throw new StyxException(buildMessage(stm, "Invalid tagged value: '@' expected."));
         }
-        Value childKey = deserializeValue(session, stm, true);
+        Value childKey = deserializeValue(session, stm);
         if(childKey == null) {
             throw new StyxException(buildMessage(stm, "Invalid tagged value: key expected."));
         }
-        Value childVal = deserializeValue(session, stm, false);
+        Value childVal = deserializeValue(session, stm);
         if(childVal == null) {
             throw new StyxException("Invalid tagged value: value expected.");
         }
@@ -516,7 +509,7 @@ public final class Serializer {
         if(curIndent >= 0) {
             stm.append(' ');
         }
-        serializeValue(val.definition(), stm, false, curIndent, deltaIndent);
+        serializeValue(val.definition(), stm, curIndent, deltaIndent);
     }
 
     private static Type deserializeType(Session session, LineReader stm) throws IOException, StyxException {
@@ -525,7 +518,7 @@ public final class Serializer {
         if(c1 != ':' || c2 != ':') {
             throw new StyxException(buildMessage(stm, "Invalid type value: '::' expected."));
         }
-        Value def = deserializeValue(session, stm, false);
+        Value def = deserializeValue(session, stm);
         return session.type(def);
     }
 
@@ -534,7 +527,7 @@ public final class Serializer {
         if(curIndent >= 0) {
             stm.append(' ');
         }
-        serializeValue(val.definition(), stm, false, curIndent, deltaIndent);
+        serializeValue(val.definition(), stm, curIndent, deltaIndent);
     }
 
     private static Function deserializeFunction(Session session, LineReader stm) throws IOException, StyxException {
@@ -543,7 +536,7 @@ public final class Serializer {
         if(c1 != '-' || c2 != '>') {
             throw new StyxException(buildMessage(stm, "Invalid function value: '->' expected."));
         }
-        Value def = deserializeValue(session, stm, false);
+        Value def = deserializeValue(session, stm);
         return session.function(def);
     }
 
@@ -554,7 +547,7 @@ public final class Serializer {
             if(c == '\n') {
                 nline = true;
             } else if(c == ',') {
-                skipWhite(stm, true); // TODO can we make this more elegant?
+                skipWhite(stm, true); // TODO (cleanup) can we make this more elegant?
                 stm.rewind(1);
                 return c;
             } else {

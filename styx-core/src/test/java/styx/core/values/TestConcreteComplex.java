@@ -21,7 +21,7 @@ public class TestConcreteComplex {
 	@Test
 	public void testBascis() {
 		Value v = ConcreteComplex.EMPTY.put(session.text("key"), session.text("val"));
-		assertEquals("@key \"val\"", v.toString());
+		assertEquals("@key val", v.toString());
 	}
 
 	@Test
@@ -109,7 +109,7 @@ public class TestConcreteComplex {
 	@Test
 	public void testAdd() {
 		Complex val = ConcreteComplex.EMPTY.add(session.text("x")).add(session.text("y")).add(session.text("z"));
-		assertEquals("[\"x\",\"y\",\"z\"]", val.toString());
+		assertEquals("[x,y,z]", val.toString());
 	}
 
 	@Test
