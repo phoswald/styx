@@ -3,7 +3,6 @@
 **/.project
 **/target
 **/*.log
-data
 styx-app/doc
 styx-core/doc
 styx-db/doc

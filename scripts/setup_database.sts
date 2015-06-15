@@ -209,5 +209,5 @@ console.write("Web Pages...")
 ]
 
 console.write("Dumping...")
-file.write([/][*], "../data/database_dump.udm", true)
+file.write([/][*], "../../styx-data/database_dump.st", true)
 

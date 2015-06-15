@@ -19,7 +19,7 @@ import styx.core.intrinsics.FileIntrinsics;
 
 public class Application {
 
-    private static String sessionConfigFile  = System.getProperty("styx.app.session.config", "system.styx");
+    private static String sessionConfigFile  = System.getProperty("styx.app.session.config", "system.st");
     private static String sessionFactoryName = System.getProperty("styx.app.session.factory", "");
 
     public static void main(String args[]) {

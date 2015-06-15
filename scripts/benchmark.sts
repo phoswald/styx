@@ -23,10 +23,10 @@ atomic {
 }
 
 end := time.current_millis()
-console.write("It took " ++ (end-beg) ++ " ms.") /* TODO interpolation */ 
+console.write("It took " ++ (end-beg) ++ " ms.") /* TODO interpolation */
 
 console.write("Dumping...")
-file.write([/][*], "../data/benchmark_dump.udm", true)
+file.write([/][*], "../../styx-data/benchmark_dump.st", true)
 
 console.write("That's all folks!")
 

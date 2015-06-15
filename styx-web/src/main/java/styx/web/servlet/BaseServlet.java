@@ -27,15 +27,15 @@ public abstract class BaseServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(BaseServlet.class.toString());
 
-    protected static final String CONTENT_TYPE_FORM = "application/x-www-form-urlencoded";
+    protected static final String CONTENT_TYPE_FORM  = "application/x-www-form-urlencoded";
     protected static final String CONTENT_TYPE_STYX  = "application/styx";
     protected static final String CONTENT_TYPE_STYXS = "application/styx-script";
-    protected static final String CONTENT_TYPE_TEXT = "text/plain";
-    protected static final String CONTENT_TYPE_HTML = "text/html";
-    protected static final String CONTENT_TYPE_XML  = "text/xml";
-    protected static final String CONTENT_TYPE_JSON = "application/json";
+    protected static final String CONTENT_TYPE_TEXT  = "text/plain";
+    protected static final String CONTENT_TYPE_HTML  = "text/html";
+    protected static final String CONTENT_TYPE_XML   = "text/xml";
+    protected static final String CONTENT_TYPE_JSON  = "application/json";
 
-    protected static final String sessionConfigFile  = System.getProperty("styx.web.session.config", "system.styx");
+    protected static final String sessionConfigFile  = System.getProperty("styx.web.session.config", "system.st");
     protected static final String sessionFactoryName = System.getProperty("styx.web.session.factory", "");
 
     protected final SessionFactory sessionFactory = SessionManager.lookupSessionFactory(sessionFactoryName);

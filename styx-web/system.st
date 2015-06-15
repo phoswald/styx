@@ -11,21 +11,21 @@
         file: [
             provider: "file"
             parameters: [
-                filename: "../data/database.styx"
+                filename: "../../styx-data/database.st"
                 indent: "true"
             ]
         ]
         derby_local: [
             provider: "jdbc"
             parameters: [
-                connstr: "jdbc:derby:../data/database.derby.db;create=true"
+                connstr: "jdbc:derby:../../styx-data/database.derby.db;create=true"
                 dialect: "Derby"
             ]
         ]
         sqlite_local: [
             provider: "jdbc"
             parameters: [
-                connstr: "jdbc:sqlite:../data/database.sqlite.db"
+                connstr: "jdbc:sqlite:../../styx-data/database.sqlite.db"
                 dialect: "SQLite"
             ]
         ]
@@ -46,7 +46,7 @@
         lmdb: [
             provider: "lmdb"
             parameters: [
-                path: "../data/database.lmdb"
+                path: "../../styx-data/database.lmdb"
                 readonly: "false"
                 nosync: "false"
             ]
