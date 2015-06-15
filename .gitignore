@@ -3,8 +3,5 @@
 **/.project
 **/target
 **/*.log
-styx-app/doc
-styx-core/doc
-styx-db/doc
-styx-web/doc
+/javadoc
 
