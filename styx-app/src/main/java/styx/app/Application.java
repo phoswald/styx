@@ -27,24 +27,37 @@ public class Application {
             boolean      interactive = true;
             List<String> scripts     = new ArrayList<>();
 
-            for(String arg : args) {
-                if(arg.startsWith("-factory=")) {
-                    sessionFactoryName = arg.substring(9);
-                } else if(arg.startsWith("-eval=")) {
-                    scripts.add(arg.substring(6));
+            for(int i = 0; i < args.length; i++) {
+                if(args[i].equals("-factory")) {
+                    if(i + 1 >= args.length) {
+                        printHelp();
+                        return;
+                    }
+                    sessionFactoryName = args[++i];
+                } else if(args[i].equals("-eval")) {
+                    if(i + 1 >= args.length) {
+                        printHelp();
+                        return;
+                    }
+                    scripts.add(args[++i]);
                     interactive = false;
-                } else if(arg.startsWith("-file=")) {
-                    try(Reader stm = Files.newBufferedReader(Paths.get(arg.substring(6)), StandardCharsets.UTF_8)) {
+                } else if(args[i].equals("-file")) {
+                    if(i + 1 >= args.length) {
+                        printHelp();
+                        return;
+                    }
+                    try(Reader stm = Files.newBufferedReader(Paths.get(args[++i]), StandardCharsets.UTF_8)) {
                         scripts.add(FileIntrinsics.readToEnd(stm));
                         interactive = false;
                     }
-                } else if(arg.equals("-interactive")) {
+                } else if(args[i].equals("-interactive")) {
                     interactive = true;
-                } else if(arg.equals("-help")) {
+                } else if(args[i].equals("-help")) {
                     printHelp();
                     interactive = false;
                 } else {
-                    System.out.println("ERROR: invalid command line argument '"+ arg + "'.");
+                    printHelp();
+                    return;
                 }
             }
 
@@ -69,7 +82,7 @@ public class Application {
         System.out.println("STYX Interpreter - (c) 2015 Philip Oswald");
         System.out.println();
         System.out.println("Syntax:");
-        System.out.println("$ styx [-factory=...] [-eval=...] [-file=...] [-interactive] [-help]");
+        System.out.println("$ styx [-factory <name>] [-eval <expr>] [-file <file>] [-interactive] [-help]");
         System.out.println();
     }
 
