@@ -8,6 +8,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import styx.StyxException;
 import styx.core.sessions.AbstractSessionFactory;
 import styx.core.sessions.TestAnySession;
 
@@ -19,7 +20,7 @@ public class TestMmapSession extends TestAnySession {
     }
 
     @Parameters
-    public static Collection<?> getParameters() {
+    public static Collection<?> getParameters() throws StyxException {
         return Arrays.<Object[]>asList(new Object[] { // test parameter [0]
                     MmapSessionProvider.createSessionFactory(Paths.get("target", "styx-session", "TestMmapSession.1.db"))
             });

@@ -15,8 +15,6 @@ import styx.core.memory.SharedValueFile;
 
 public final class FileSessionProvider implements SessionProvider {
 
-    private static final Session detached = SessionManager.getDetachedSession();
-
     @Override
     public String getName() {
         return "file";
@@ -24,13 +22,10 @@ public final class FileSessionProvider implements SessionProvider {
 
     @Override
     public SessionFactory createSessionFactory(Complex parameters) {
+        Session detached = SessionManager.getDetachedSession();
         return createSessionFactory(
-                parameters.get(detached.text("path")).asText().toTextString(),
+                FileSystems.getDefault().getPath(parameters.get(detached.text("path")).asText().toTextString()),
                 parameters.get(detached.text("indent")).asBool().toBool());
-    }
-
-    public static AbstractSessionFactory createSessionFactory(String path, boolean indent) {
-        return createSessionFactory(FileSystems.getDefault().getPath(path), indent);
     }
 
     public static AbstractSessionFactory createSessionFactory(Path path, boolean indent) {

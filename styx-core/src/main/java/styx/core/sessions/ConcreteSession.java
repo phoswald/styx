@@ -29,18 +29,23 @@ import styx.core.values.AbstractValue;
 
 public class ConcreteSession implements Session {
 
+    private final Complex      complex;
     private final DataProvider data;
     private final TypeProvider type;
     private final FuncProvider func;
     private final EvalProvider eval;
-
-    private final Complex environment;
+    private final Complex      environment;
 
     public ConcreteSession(DataProvider data, TypeProvider type, FuncProvider func, EvalProvider eval, Complex environment) {
-        this.data = Objects.requireNonNull(data);
-        this.type = Objects.requireNonNull(type);
-        this.func = Objects.requireNonNull(func);
-        this.eval = Objects.requireNonNull(eval);
+        this(AbstractValue.complex(), data, type, func, eval, environment);
+    }
+
+    public ConcreteSession(Complex complex, DataProvider data, TypeProvider type, FuncProvider func, EvalProvider eval, Complex environment) {
+        this.complex     = Objects.requireNonNull(complex);
+        this.data        = Objects.requireNonNull(data);
+        this.type        = Objects.requireNonNull(type);
+        this.func        = Objects.requireNonNull(func);
+        this.eval        = Objects.requireNonNull(eval);
         this.environment = Objects.requireNonNull(environment);
     }
 
@@ -101,7 +106,7 @@ public class ConcreteSession implements Session {
 
     @Override
     public Complex complex() {
-        return AbstractValue.complex();
+        return complex;
     }
 
     @Override

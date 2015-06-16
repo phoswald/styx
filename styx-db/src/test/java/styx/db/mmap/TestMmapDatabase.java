@@ -18,7 +18,7 @@ import styx.Value;
 public class TestMmapDatabase {
 
     @Test
-    public void testOpen() throws IOException {
+    public void testOpen() throws IOException, StyxException {
         Path file = Paths.get("target", "styx-session", "TestMappedDatabase.1.db");
         Files.createDirectories(file.getParent());
         Files.deleteIfExists(file);

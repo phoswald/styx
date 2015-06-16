@@ -84,7 +84,7 @@ public class MmapDatabase implements AutoCloseable {
         }
     }
 
-    public static MmapDatabase fromFile(Path path) throws IOException {
+    public static MmapDatabase fromFile(Path path) throws StyxException {
         try(FileChannel fc = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.SPARSE)) {
             long size = fc.size();
             System.out.println("Database: opened '" + path + "', size = " + size + " bytes.");
@@ -118,6 +118,8 @@ public class MmapDatabase implements AutoCloseable {
             System.out.println("Database: mapped.");
 
             return new MmapDatabase(path.toString(), buffer, size);
+        } catch(IOException e) {
+            throw new StyxException("Failed to open or map file.", e);
         }
     }
 
@@ -208,8 +210,8 @@ public class MmapDatabase implements AutoCloseable {
         return sentinel;
     }
 
-    public Complex makeComplex(long address) {
-        return new ConcreteComplex(new MmapAvlTree(this, address));
+    public Complex getEmpty() {
+        return new ConcreteComplex(new MmapAvlTree(this, 0));
     }
 
     public Value loadValue(long address) throws StyxException {
@@ -217,7 +219,7 @@ public class MmapDatabase implements AutoCloseable {
             return null; // not used by MmapAvlTree, only required when [/][*] = null
         }
         if((address & 1) == 0) {
-            return makeComplex(address);
+            return new ConcreteComplex(new MmapAvlTree(this, address));
         } else {
             address--;
             int size = getInt(address);
