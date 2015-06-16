@@ -20,9 +20,7 @@ import styx.core.memory.SharedMemoryData;
 import styx.core.sessions.AbstractSessionFactory;
 import styx.core.sessions.ConcreteSession;
 
-public class MappedFileSessionProvider implements SessionProvider {
-
-    private static final Session detached = SessionManager.getDetachedSession();
+public class MmapSessionProvider implements SessionProvider {
 
     @Override
     public String getName() {
@@ -31,42 +29,43 @@ public class MappedFileSessionProvider implements SessionProvider {
 
     @Override
     public SessionFactory createSessionFactory(Complex parameters) {
+        Session detached = SessionManager.getDetachedSession();
         return createSessionFactory(
-                parameters.get(detached.text("filename")).asText().toTextString());
+                parameters.get(detached.text("path")).asText().toTextString());
     }
 
-    public static AbstractSessionFactory createSessionFactory(String file) {
-        return createSessionFactory(FileSystems.getDefault().getPath(file));
+    public static AbstractSessionFactory createSessionFactory(String path) {
+        return createSessionFactory(FileSystems.getDefault().getPath(path));
     }
 
-    public static AbstractSessionFactory createSessionFactory(Path file) {
-        MappedDatabase db;
+    public static AbstractSessionFactory createSessionFactory(Path path) {
+        MmapDatabase db;
         try {
-            db = MappedDatabase.fromFile(file);
+            db = MmapDatabase.fromFile(path);
         } catch (IOException e) {
             throw new StyxRuntimeException("Failed to open or map file.", e); // TODO where to open file?
         }
-        final MappedSharedValue state = new MappedSharedValue(db);
+        final MmapSharedValue state = new MmapSharedValue(db);
         return new AbstractSessionFactory() {
             @Override
             public Session createSession() throws StyxException {
-                return new ConcreteSessionEx(new SharedMemoryData(state.clone()), type, func, eval, environment, state.empty());
+                return new ConcreteSessionEx(new SharedMemoryData(state.clone()), type, func, eval, environment, db.makeComplex(0));
             }
         };
     }
 
-    private static final class ConcreteSessionEx extends ConcreteSession {
+    private static final class ConcreteSessionEx extends ConcreteSession { // TODO: add complex to base class, then remove this class
 
-        private final Complex empty;
+        private final Complex complex;
 
-        public ConcreteSessionEx(DataProvider data, TypeProvider type, FuncProvider func, EvalProvider eval, Complex environment, Complex empty) {
+        public ConcreteSessionEx(DataProvider data, TypeProvider type, FuncProvider func, EvalProvider eval, Complex environment, Complex complex) {
             super(data, type, func, eval, environment);
-            this.empty = Objects.requireNonNull(empty);
+            this.complex = Objects.requireNonNull(complex);
         }
 
         @Override
         public Complex complex() {
-            return empty;
+            return complex;
         }
     }
 }

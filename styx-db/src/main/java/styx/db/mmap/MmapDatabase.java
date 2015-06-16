@@ -1,6 +1,9 @@
 package styx.db.mmap;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
@@ -11,7 +14,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-public class MappedDatabase implements AutoCloseable {
+import styx.Complex;
+import styx.Session;
+import styx.SessionManager;
+import styx.StyxException;
+import styx.Value;
+import styx.core.values.ConcreteComplex;
+
+public class MmapDatabase implements AutoCloseable {
 
     private final static byte[] MAGIC = "STYX-DB-0001____".getBytes(StandardCharsets.UTF_8);
 
@@ -41,7 +51,7 @@ public class MappedDatabase implements AutoCloseable {
     /**
      * Constructs a new instance with position zero.
      */
-    private MappedDatabase(String url, ByteBuffer buffer, long size) {
+    private MmapDatabase(String url, ByteBuffer buffer, long size) {
         this.url    = url;
         this.size   = (size + 7) & ~7;
         this.bytes  = buffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -74,10 +84,10 @@ public class MappedDatabase implements AutoCloseable {
         }
     }
 
-    public static MappedDatabase fromFile(Path file) throws IOException {
-        try(FileChannel fc = FileChannel.open(file, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.SPARSE)) {
+    public static MmapDatabase fromFile(Path path) throws IOException {
+        try(FileChannel fc = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.SPARSE)) {
             long size = fc.size();
-            System.out.println("Database: opened '" + file + "', size = " + size + " bytes.");
+            System.out.println("Database: opened '" + path + "', size = " + size + " bytes.");
 
             if(size == 0) {
 /*
@@ -107,16 +117,16 @@ public class MappedDatabase implements AutoCloseable {
             ByteBuffer buffer = fc.map(FileChannel.MapMode.READ_WRITE, 0, size);
             System.out.println("Database: mapped.");
 
-            return new MappedDatabase(file.toString(), buffer, size);
+            return new MmapDatabase(path.toString(), buffer, size);
         }
     }
 
-    public static MappedDatabase fromMemory(long size) {
-        return new MappedDatabase("memory", ByteBuffer.allocateDirect((int) size), size);
+    public static MmapDatabase fromMemory(long size) {
+        return new MmapDatabase("memory", ByteBuffer.allocateDirect((int) size), size);
     }
 
-    public static MappedDatabase fromArray(byte[] bytes) {
-        return new MappedDatabase("array", ByteBuffer.wrap(bytes), bytes.length);
+    public static MmapDatabase fromArray(byte[] bytes) {
+        return new MmapDatabase("array", ByteBuffer.wrap(bytes), bytes.length);
     }
 
     @Override
@@ -131,16 +141,16 @@ public class MappedDatabase implements AutoCloseable {
         }
     }
 
-    public void dump() {
+    public void dump(PrintStream stm) {
         if(bytes != null) {
-            System.out.println("ByteBuffer properties (" + url + "):");
-//          System.out.println("- isLoaded: " + bytes.isLoaded());
-            System.out.println("- isDirect: " + bytes.isDirect());
-            System.out.println("- capacity: " + bytes.capacity());
-            System.out.println("Database properties (" + url + "):");
-            System.out.println("- size: " + size);
-            System.out.println("- root: " + getLong(ADDRESS_ROOT));
-            System.out.println("- next: " + getLong(ADDRESS_NEXT));
+            stm.println("ByteBuffer properties (" + url + "):");
+//          stm.println("- isLoaded: " + bytes.isLoaded());
+            stm.println("- isDirect: " + bytes.isDirect());
+            stm.println("- capacity: " + bytes.capacity());
+            stm.println("Database properties (" + url + "):");
+            stm.println("- size: " + size);
+            stm.println("- root: " + getLong(ADDRESS_ROOT));
+            stm.println("- next: " + getLong(ADDRESS_NEXT));
         }
     }
 
@@ -177,6 +187,68 @@ public class MappedDatabase implements AutoCloseable {
                     break;
                 }
             }
+        }
+    }
+
+    private final MmapAvlTree sentinel = new MmapAvlTree(this, 0);
+
+//    private static final Session session = SessionManager.getDetachedSession(); // TODO static? detached? or something else?
+
+    private static Session session;
+
+    static {
+        try {
+            session = SessionManager.createMemorySessionFactory(false).createSession(); // TODO static? detached? or something else?
+        } catch (StyxException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public MmapAvlTree getSentinel() {
+        return sentinel;
+    }
+
+    public Complex makeComplex(long address) {
+        return new ConcreteComplex(new MmapAvlTree(this, address));
+    }
+
+    public Value loadValue(long address) throws StyxException {
+        if(address == -1) {
+            return null; // not used by MmapAvlTree, only required when [/][*] = null
+        }
+        if((address & 1) == 0) {
+            return makeComplex(address);
+        } else {
+            address--;
+            int size = getInt(address);
+            byte[] data = new byte[size];
+            getArray(address + 4, data);
+            ByteArrayInputStream stm = new ByteArrayInputStream(data);
+            return session.deserialize(stm);
+        }
+    }
+
+    public long storeValue(Value value) throws StyxException {
+        if(value == null) {
+            return -1; // not used by MmapAvlTree, only required when [/][*] = null
+        }
+        if(value.isComplex()) {
+            if(value instanceof ConcreteComplex == false) {
+                throw new StyxException("Unsupported implementation of Complex.");
+            }
+            ConcreteComplex complex = (ConcreteComplex) value;
+            if(complex.children() instanceof MmapAvlTree == false) {
+                throw new StyxException("Unsupported implementation of ImmutableSortedMap.");
+            }
+            MmapAvlTree tree = (MmapAvlTree) complex.children();
+            return tree.store();
+        } else {
+            ByteArrayOutputStream stm = new ByteArrayOutputStream();
+            session.serialize(value, stm, false);
+            long address = alloc(stm.size() + 4);
+            putInt(address, stm.size());
+            putArray(address + 4, stm.toByteArray());
+            return address | 1;
         }
     }
 

@@ -1,6 +1,7 @@
 package styx.db.mmap;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,29 +10,33 @@ import java.nio.file.Paths;
 
 import org.junit.Test;
 
-import styx.db.mmap.MappedDatabase;
+import styx.Session;
+import styx.SessionFactory;
+import styx.StyxException;
+import styx.Value;
 
-public class TestMappedDatabase {
+public class TestMmapDatabase {
 
     @Test
     public void testOpen() throws IOException {
-        Path file = Paths.get("target", "temp", "TestMappedDatabase.testOpen.db");
+        Path file = Paths.get("target", "styx-session", "TestMappedDatabase.1.db");
         Files.createDirectories(file.getParent());
         Files.deleteIfExists(file);
-        try(MappedDatabase db = MappedDatabase.fromFile(file)) {
-            db.dump();
+
+        try(MmapDatabase db = MmapDatabase.fromFile(file)) {
+            db.dump(System.out);
         }
-        try(MappedDatabase db = MappedDatabase.fromMemory(64 << 10)) {
-            db.dump();
+        try(MmapDatabase db = MmapDatabase.fromMemory(64 << 10)) {
+            db.dump(System.out);
         }
-        try(MappedDatabase db = MappedDatabase.fromArray(new byte[64 << 10])) {
-            db.dump();
+        try(MmapDatabase db = MmapDatabase.fromArray(new byte[64 << 10])) {
+            db.dump(System.out);
         }
     }
 
     @Test
     public void testMemory() {
-        try(MappedDatabase db = MappedDatabase.fromMemory(64 << 10)) {
+        try(MmapDatabase db = MmapDatabase.fromMemory(64 << 10)) {
             assertEquals( 0, db.getRoot());
             assertEquals( 32, db.alloc(32));
             assertEquals( 64, db.alloc(32));
@@ -63,11 +68,10 @@ public class TestMappedDatabase {
         }
     }
 
-
     @Test
     public void testArray() {
         byte[] data = new byte[64 << 10];
-        try(MappedDatabase db = MappedDatabase.fromArray(data)) {
+        try(MmapDatabase db = MmapDatabase.fromArray(data)) {
             assertEquals(32, db.alloc(32));
             assertEquals(0, db.getLong(32));
             db.putLong(32, 0xDEADBEEF12345678L);
@@ -75,11 +79,40 @@ public class TestMappedDatabase {
             assertEquals(0x12345678, db.getInt(32));
             assertEquals(0xDEADBEEF, db.getInt(36));
         }
-        try(MappedDatabase db = MappedDatabase.fromArray(data)) {
+        try(MmapDatabase db = MmapDatabase.fromArray(data)) {
             assertEquals(64, db.alloc(32)); // instead of 32
             assertEquals(0xDEADBEEF12345678L, db.getLong(32)); // instead of 0
             assertEquals(0x12345678, db.getInt(32));
             assertEquals(0xDEADBEEF, db.getInt(36));
+        }
+    }
+
+    @Test
+    public void testSession() throws StyxException, IOException {
+        Path file = Paths.get("target", "styx-session", "TestMappedDatabase.2.db");
+        Files.createDirectories(file.getParent());
+        Files.deleteIfExists(file);
+
+        SessionFactory sf = MmapSessionProvider.createSessionFactory(file);
+        try(Session session = sf.createSession()) {
+            session.write(session.root(), session.deserialize("[key1:val1,key2:val2,key3:[1,2,3,4,5]]"));
+        }
+        try(Session session = sf.createSession()) {
+            Value val = session.read(session.root());
+            assertEquals("[key1:val1,key2:val2,key3:[1,2,3,4,5]]", val.toString());
+        }
+        try(Session session = sf.createSession()) {
+            Value val = session.read(session.root().child(session.text("key3")));
+            assertEquals("[1,2,3,4,5]", val.toString());
+
+            session.write(session.root(), session.text("foo"));
+            assertEquals("foo", session.read(session.root()).toString());
+
+            session.write(session.root(), session.complex());
+            assertEquals("[]", session.read(session.root()).toString());
+
+            session.write(session.root(), null);
+            assertNull(session.read(session.root()));
         }
     }
 }

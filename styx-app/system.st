@@ -11,7 +11,7 @@
         file: [
             provider: file
             parameters: [
-                filename: "../../styx-data/database.st"
+                path: "../../styx-data/database.st"
                 indent: true
             ]
         ]
@@ -49,6 +49,12 @@
                 path: "../../styx-data/database.lmdb"
                 readonly: false
                 nosync: false
+            ]
+        ]
+        mmap: [
+            provider: mmap
+            parameters: [
+                path: "../../styx-data/database.mmap"
             ]
         ]
     ]

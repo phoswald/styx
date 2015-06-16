@@ -12,8 +12,6 @@ import styx.db.RowDatabaseData;
 
 public class JdbcSessionProvider implements SessionProvider {
 
-    private static final Session detached = SessionManager.getDetachedSession();
-
     @Override
     public String getName() {
         return "jdbc";
@@ -21,6 +19,7 @@ public class JdbcSessionProvider implements SessionProvider {
 
     @Override
     public SessionFactory createSessionFactory(Complex parameters) throws StyxException {
+        Session detached = SessionManager.getDetachedSession();
         return createSessionFactory(
                 parameters.get(detached.text("connstr")).asText().toTextString(),
                 parameters.get(detached.text("dialect")).asText().toTextString());

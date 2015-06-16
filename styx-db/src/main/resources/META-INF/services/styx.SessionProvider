@@ -1,1 +1,2 @@
 styx.db.jdbc.JdbcSessionProvider
+styx.db.mmap.MmapSessionProvider
