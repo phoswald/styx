@@ -98,7 +98,7 @@ console.write("Web Pages...")
                 @p "STYX is enabled by:"
                 @table [
                     @tr [
-                        @td [ @img [ @"#src" "JavaLogo" ] ] // TODO: make [ ] optional after @td
+                        @td @img @"#src" "JavaLogo"
                         @td [
                             @a [ @"#href" "http://en.wikipedia.org/wiki/Java_(programming_language)", "Java" ]
                             " is, as of 2014, one of the most popular programming languages in use, particularly for client-server web applications, with a reported 9 million developers. "
@@ -106,7 +106,7 @@ console.write("Web Pages...")
                         ]
                     ]
                     @tr [
-                        @td [ @img [ @"#src" "SqliteLogo" ] ] // TODO: make [ ] optional after @td
+                        @td @img @"#src" "SqliteLogo"
                         @td [
                             @a [ @"#href" "http://en.wikipedia.org/wiki/SQLite", "SQLite" ]
                             " is a software library that implements a self-contained, serverless, zero-configuration, transactional SQL database engine. "
@@ -196,8 +196,7 @@ console.write("Web Pages...")
                 ]
                 @body [
                     @h1 "STYX Site Index"
-                    // TODO get rid of @div
-                    @div (foreach(v in session.browse([/urls])) yield @p [
+                    (foreach(v in session.browse([/urls])) yield @p [
                         @a [ @"#href" (v), (v) ]
                         " "
                         @a [ @"#href" ("../rest/urls/" ++ v), "[Source]" ]

@@ -44,8 +44,8 @@ import styx.Value;
  */
 public final class XmlSerializer {
 
-    private static final XMLInputFactory INPUT_FACTORY = XMLInputFactory.newFactory();
     private static final XMLOutputFactory OUTPUT_FACTORY = XMLOutputFactory.newFactory();
+    private static final XMLInputFactory INPUT_FACTORY = XMLInputFactory.newFactory();
 
     private static final byte[] BOM = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
 
@@ -209,7 +209,7 @@ public final class XmlSerializer {
         }
     }
 
-    private static Value deserialize(final Session session, XMLStreamReader reader) throws XMLStreamException, StyxException {
+    private static Value deserialize(Session session, XMLStreamReader reader) throws XMLStreamException, StyxException {
         Scope scope = new Scope(null);
         while(reader.hasNext()) {
             reader.next();

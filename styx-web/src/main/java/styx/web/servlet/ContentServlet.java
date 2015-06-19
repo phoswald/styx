@@ -74,11 +74,11 @@ public final class ContentServlet extends BaseServlet {
                 response.setStatus(HttpServletResponse.SC_OK);
                 response.setContentType(page.get(session.text("ContentType")).asText().toTextString());
                 response.setCharacterEncoding("UTF-8");
-                XmlExporter.exportDocument(page.get(session.text("Body")), response.getOutputStream());
+                XmlExporter.exportDocument(page.get(session.text("Body")), response.getOutputStream(), false);
             }
         },
         Dynamic {
-            @Override public void dispatch(Session session, Reference ref, Complex page, HttpServletRequest request, HttpServletResponse response) throws StyxException, IOException {
+            @Override public void dispatch(Session session, Reference ref, Complex page, HttpServletRequest request, HttpServletResponse response) throws IOException, StyxException {
                 Value[] arguments = new Value[] { ref, decodeRequestProps(session, request), decodeRequestParams(session, request), decodeRequestHeaders(session, request), decodeRequestCookies(session, request) };
                 Value   pageDyn   = page.get(session.text("Func")).asFunction().invoke(session, arguments);
 
@@ -92,6 +92,6 @@ public final class ContentServlet extends BaseServlet {
             }
         };
 
-        public abstract void dispatch(Session session, Reference ref, Complex page, HttpServletRequest request, HttpServletResponse response) throws StyxException, IOException;
+        public abstract void dispatch(Session session, Reference ref, Complex page, HttpServletRequest request, HttpServletResponse response) throws IOException, StyxException;
     }
 }
