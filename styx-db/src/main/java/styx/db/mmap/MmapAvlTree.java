@@ -14,92 +14,82 @@ public class MmapAvlTree implements ImmutableSortedMap<Value, Value> {
 
     private final MmapDatabase db;
 
-    private long    address;
-    private boolean loaded;
+    private long address; // (-1 if not stored)
 
-    private Value       key;    // never null
-    private Value       val;    // never null
-    private MmapAvlTree left;   // never null, but points to itself for EmptyInstance
-    private MmapAvlTree right;  // never null, but points to itself for EmptyInstance
-    private int         height; // 0 if empty, 1 leaf, ...
+    private Value       key;    // never null (null if not loaded or for empty instance)
+    private Value       val;    // never null (null if not loaded or for empty instance)
+    private MmapAvlTree left;   // never null, but points to itself for empty instance (null if not loaded)
+    private MmapAvlTree right;  // never null, but points to itself for empty instance (null if not loaded)
+    private int         height; // 0 for empty instance, 1 leaf, ... (-1 if not loaded)
 
     public MmapAvlTree(MmapDatabase db, long address) {
         this.db      = Objects.requireNonNull(db);
         this.address = address;
+        this.height  = -1;
 
         if(address == 0) {
-            this.loaded = true;
             this.left   = this;
             this.right  = this;
+            this.height = 0;
         }
     }
 
     private MmapAvlTree(MmapDatabase db, Value key, Value val, MmapAvlTree left, MmapAvlTree right) {
         this.db      = Objects.requireNonNull(db);
         this.address = -1;
-        this.loaded  = true;
-        this.key     = key;
-        this.val     = val;
-        this.left    = left;
-        this.right   = right;
+        this.key     = Objects.requireNonNull(key);
+        this.val     = Objects.requireNonNull(val);
+        this.left    = Objects.requireNonNull(left);
+        this.right   = Objects.requireNonNull(right);
         this.height  = 1 + max(left.height(), right.height());
     }
 
-    private MmapAvlTree load() {
-        try {
-            if(!loaded) {
-                // int flags  = db.getInt(address);
-                height = db.getInt(address +  4);
-                key    = db.loadValue(db.getLong(address +  8));
-                val    = db.loadValue(db.getLong(address + 16));
-                left   = new MmapAvlTree(db, db.getLong(address + 24));
-                right  = new MmapAvlTree(db, db.getLong(address + 32));
-                loaded = true;
-            }
-            return this;
-        } catch(RuntimeException | StyxException e) {
-            e.printStackTrace();
-            throw new RuntimeException("MMAP: Failed to load AVL tree node with address="+address, e);
-        }
-    }
-
     public long store() throws StyxException {
-        try {
-            if(address == -1) {
-                int flags = 0;
-                address = db.alloc(40);
-                db.putInt(address,      flags);
-                db.putInt(address +  4, height);
-                db.putLong(address +  8, db.storeValue(key));
-                db.putLong(address + 16, db.storeValue(val));
-                db.putLong(address + 24, left.store());
-                db.putLong(address + 32, right.store());
-            }
-            return address;
-        } catch(RuntimeException | StyxException e) {
-            e.printStackTrace();
-            throw new RuntimeException("MMAP: Failed to store AVL tree node with address="+address, e);
+        if(address == -1) {
+            address = db.alloc(40);
+//          db.putInt (address,      0 /* not used */);
+            db.putInt (address +  4, height);
+            db.putLong(address +  8, db.storeValue(key));
+            db.putLong(address + 16, db.storeValue(val));
+            db.putLong(address + 24, left.store());
+            db.putLong(address + 32, right.store());
         }
+        return address;
     }
 
     private Value key() {
-        return load().key;
+        if(key == null && height != 0) {
+            key = Objects.requireNonNull(db.loadValue(db.getLong(address +  8)));
+        }
+        return key;
     }
 
     private Value val() {
-        return load().val;
+        if(val == null && height != 0) {
+            val = Objects.requireNonNull(db.loadValue(db.getLong(address + 16)));
+        }
+        return val;
     }
 
     private MmapAvlTree left() {
-        return load().left;
+        if(left == null) {
+            left = Objects.requireNonNull(db.getProxy(db.getLong(address + 24)));
+        }
+        return left;
     }
 
     private MmapAvlTree right() {
-        return load().right;
+        if(right == null) {
+            right = Objects.requireNonNull(db.getProxy(db.getLong(address + 32)));
+        }
+        return right;
     }
 
     private int height() {
-        return load().height;
+        if(height == -1) {
+            height = db.getInt(address + 4);
+        }
+        return height;
     }
 
     private int balance() {
@@ -224,7 +214,7 @@ public class MmapAvlTree implements ImmutableSortedMap<Value, Value> {
             }
             return node;
         } else { // find next or previous
-            MmapAvlTree branch = db.getSentinel();
+            MmapAvlTree branch = db.getProxy(0);
             while(!node.isEmpty()) {
                 // Debug.Assert(node.balance() >= -1 && node.balance() <= 1);
                 int cmp = key.compareTo(node.key());

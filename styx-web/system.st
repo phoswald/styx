@@ -55,6 +55,7 @@
             provider: mmap
             parameters: [
                 path: "../../styx-data/database.mmap"
+                size: 1000000000
             ]
         ]
     ]

@@ -74,7 +74,7 @@ public final class ContentServlet extends BaseServlet {
                 response.setStatus(HttpServletResponse.SC_OK);
                 response.setContentType(page.get(session.text("ContentType")).asText().toTextString());
                 response.setCharacterEncoding("UTF-8");
-                XmlExporter.exportDocument(page.get(session.text("Body")), response.getOutputStream(), false);
+                new XmlExporter(session).exportDocument(page.get(session.text("Body")), response.getOutputStream(), false);
             }
         },
         Dynamic {

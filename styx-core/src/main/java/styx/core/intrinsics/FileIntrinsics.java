@@ -22,6 +22,7 @@ import styx.core.expressions.FuncRegistry;
 import styx.core.expressions.Stack;
 import styx.core.utils.JsonSerializer;
 import styx.core.utils.XmlExporter;
+import styx.core.utils.XmlLargeExporter;
 import styx.core.utils.XmlSerializer;
 
 public class FileIntrinsics {
@@ -136,7 +137,17 @@ public class FileIntrinsics {
                     @Override
                     public Value invoke(Stack stack) throws StyxException {
                         try(FileInputStream stm = new FileInputStream(stack.getFrameValue(0).asText().toTextString())) {
-                            return XmlExporter.importDocument(stack.session(), stm);
+                            return new XmlExporter(stack.session()).importDocument(stm);
+                        } catch (IOException e) {
+                            throw new StyxException("Cannot import XML file.", e);
+                        }
+                    }
+                }.function())
+                .put(session.text("import_large_xml"), new CompiledFunction(registry, "file_import_large_xml", Determinism.NON_DETERMINISTIC, 3) {
+                    @Override
+                    public Value invoke(Stack stack) throws StyxException {
+                        try(FileInputStream stm = new FileInputStream(stack.getFrameValue(0).asText().toTextString())) {
+                            return new XmlLargeExporter(stack.session(), stack.getFrameValue(1).asNumber().toInteger(), stack.getFrameValue(2).asReference()).importDocument(stm);
                         } catch (IOException e) {
                             throw new StyxException("Cannot import XML file.", e);
                         }
@@ -146,7 +157,7 @@ public class FileIntrinsics {
                     @Override
                     public Value invoke(Stack stack) throws StyxException {
                         try(FileOutputStream stm = new FileOutputStream(stack.getFrameValue(0).asText().toTextString())) {
-                            XmlExporter.exportDocument(stack.getFrameValue(1), stm, stack.getFrameValue(2).asBool().toBool());
+                            new XmlExporter(stack.session()).exportDocument(stack.getFrameValue(1), stm, stack.getFrameValue(2).asBool().toBool());
                             return null;
                         } catch (IOException e) {
                             throw new StyxException("Cannot export XML file.", e);

@@ -22,7 +22,7 @@ public class TestMmapTransaction extends TestAnyTransaction {
     @Parameters
     public static Collection<?> getParameters() throws StyxException {
         return Arrays.<Object[]>asList(new Object[] { // test parameter [0]
-                    MmapSessionProvider.createSessionFactory(Paths.get("target", "styx-session", "TestMmapSession.2.db"))
+                    MmapSessionProvider.createSessionFactory(Paths.get("target", "styx-session", "TestMmapSession.2.db"), 64 << 10)
             });
     }
 }

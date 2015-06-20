@@ -24,11 +24,12 @@ public class MmapSessionProvider implements SessionProvider {
     public SessionFactory createSessionFactory(Complex parameters) throws StyxException {
         Session detached = SessionManager.getDetachedSession();
         return createSessionFactory(
-                FileSystems.getDefault().getPath(parameters.get(detached.text("path")).asText().toTextString()));
+                FileSystems.getDefault().getPath(parameters.get(detached.text("path")).asText().toTextString()),
+                parameters.get(detached.text("size")).asNumber().toLong());
     }
 
-    public static AbstractSessionFactory createSessionFactory(Path path) throws StyxException {
-        MmapDatabase db = MmapDatabase.fromFile(path);
+    public static AbstractSessionFactory createSessionFactory(Path path, long size) throws StyxException {
+        MmapDatabase db = MmapDatabase.fromFile(path, size);
         final MmapSharedValue state = new MmapSharedValue(db);
         return new AbstractSessionFactory() {
             @Override

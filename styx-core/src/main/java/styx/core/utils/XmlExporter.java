@@ -19,16 +19,23 @@ import javax.xml.stream.XMLStreamWriter;
 
 import styx.Pair;
 import styx.Session;
+import styx.StyxException;
 import styx.Value;
 
-public final class XmlExporter {
+public class XmlExporter {
 
     private static final XMLOutputFactory OUTPUT_FACTORY = XMLOutputFactory.newFactory();
     private static final XMLInputFactory INPUT_FACTORY = XMLInputFactory.newFactory();
 
     private static final byte[] BOM = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
 
-    public static void exportDocument(Value val, OutputStream stm, boolean indent) throws IOException {
+    protected final Session session;
+
+    public XmlExporter(Session session) {
+        this.session = Objects.requireNonNull(session);
+    }
+
+    public void exportDocument(Value val, OutputStream stm, boolean indent) throws IOException {
         try {
             stm.write(BOM);
             exportValue(val, OUTPUT_FACTORY.createXMLStreamWriter(stm), indent);
@@ -37,7 +44,7 @@ public final class XmlExporter {
         }
     }
 
-    public static void exportDocument(Value val, Writer stm, boolean indent) throws IOException {
+    public void exportDocument(Value val, Writer stm, boolean indent) throws IOException {
         try {
             exportValue(val, OUTPUT_FACTORY.createXMLStreamWriter(stm), indent);
         } catch (XMLStreamException e) {
@@ -45,7 +52,7 @@ public final class XmlExporter {
         }
     }
 
-    private static void exportValue(Value val, XMLStreamWriter writer, boolean indent /* XXX */) throws XMLStreamException {
+    private void exportValue(Value val, XMLStreamWriter writer, boolean indent /* XXX */) throws XMLStreamException {
         if(val.isComplex()) {
             for(Pair<Value, Value> pair : val.asComplex()) {
                 if(pair.key().isNumber()) {
@@ -74,27 +81,25 @@ public final class XmlExporter {
         }
     }
 
-    public static Value importDocument(Session session, InputStream stm) throws IOException {
-        Objects.requireNonNull(session);
+    public Value importDocument(InputStream stm) throws IOException, StyxException {
         Objects.requireNonNull(stm);
         try {
-            return importValue(session, INPUT_FACTORY.createXMLStreamReader(stm));
+            return importValue(INPUT_FACTORY.createXMLStreamReader(stm));
         } catch (XMLStreamException e) {
             throw new IOException("Failed to import from XML document.");
         }
     }
 
-    public static Value importDocument(Session session, Reader stm) throws IOException {
-        Objects.requireNonNull(session);
+    public Value importDocument(Reader stm) throws IOException, StyxException {
         Objects.requireNonNull(stm);
         try {
-            return importValue(session, INPUT_FACTORY.createXMLStreamReader(stm));
+            return importValue(INPUT_FACTORY.createXMLStreamReader(stm));
         } catch (XMLStreamException e) {
             throw new IOException("Failed to import from XML document.");
         }
     }
 
-    private static Value importValue(Session session, XMLStreamReader reader) throws XMLStreamException {
+    private Value importValue(XMLStreamReader reader) throws XMLStreamException, StyxException {
         Deque<List<Value>> stack = new ArrayDeque<>();
         stack.addFirst(new ArrayList<>());
         while(reader.hasNext()) {
@@ -105,25 +110,29 @@ public final class XmlExporter {
                 for(int idxAttr = 0; idxAttr < numAttr; idxAttr++) {
                     String name = reader.getAttributeLocalName(idxAttr);
                     String text = reader.getAttributeValue(idxAttr);
-                    stack.getFirst().add(session.complex(session.text("#" + name), session.text(text)));
+                    append(stack, session.complex(session.text("#" + name), session.text(text)));
                 }
             } else if(reader.isCharacters()) {
                 String text = reader.getText();
                 stack.getFirst().add(session.text(text));
             } else if(reader.isEndElement()) {
                 String name = reader.getLocalName();
-                Value value = collect(session, stack.removeFirst());
-                stack.getFirst().add(session.complex(session.text(name), value));
+                Value value = collect(stack, stack.removeFirst());
+                append(stack, session.complex(session.text(name), value));
             }
         }
-        return collect(session, stack.getFirst());
+        return collect(stack, stack.removeFirst());
     }
 
-    private static Value collect(Session session, List<Value> values) {
-        if(values.size() == 1 && values.get(0).isText()) {
-            return values.get(0);
+    protected Value collect(Deque<List<Value>> stack, List<Value> list) throws StyxException {
+        if(list.size() == 1 && list.get(0).isText()) {
+            return list.get(0);
         } else {
-            return session.complex().addAll(values);
+            return session.complex().addAll(list);
         }
+    }
+
+    protected void append(Deque<List<Value>> stack, Value value) throws StyxException {
+        stack.getFirst().add(value);
     }
 }

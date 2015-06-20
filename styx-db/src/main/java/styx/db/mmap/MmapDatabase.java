@@ -3,7 +3,6 @@ package styx.db.mmap;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
@@ -23,14 +22,27 @@ import styx.core.values.ConcreteComplex;
 
 public class MmapDatabase implements AutoCloseable {
 
-    private final static byte[] MAGIC = "STYX-DB-0001____".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] MAGIC = "STYX-DB-0001____".getBytes(StandardCharsets.UTF_8);
 
-    private final static long ADDRESS_MAGIC =  0;
-    private final static long ADDRESS_ROOT  = 16;
-    private final static long ADDRESS_NEXT  = 24;
-    private final static long ADDRESS_FIRST = 32;
+    private static final int  TAG_SHIFT = 60;
+    private static final long TAG_MASK  = 0x0FL << TAG_SHIFT;
 
-    private String url;
+    private static final int  ARG_SHIFT = 56;
+    private static final long ARG_MASK  = 0x0FL << ARG_SHIFT;
+
+    private static final int TAG_COMPLEX = 0x1; //                   address        stored in lowest    56 bits
+    private static final int TAG_BOOL    = 0x2; //                   0 or 1         stored in lowest    32 bits
+    private static final int TAG_INTEGER = 0x3; //                   signed integer stored in lowest    32 bits
+    private static final int TAG_BINARY  = 0x4; // arg 0..7: length, bytes          stored in lowest 0..56 bits
+    private static final int TAG_TEXT    = 0x5; // arg 0..7: length, UTF-8 bytes    stored in lowest 0..56 bits
+    private static final int TAG_OTHER   = 0x6; //                   address        stored in lowest    56 bits
+
+    private static final long ADDRESS_MAGIC =  0;
+    private static final long ADDRESS_ROOT  = 16;
+    private static final long ADDRESS_NEXT  = 24;
+    private static final long ADDRESS_FIRST = 32;
+
+    private String path;
 
     /**
      * The size of the memory region, zero if not open, always a multiple of 8.
@@ -51,9 +63,10 @@ public class MmapDatabase implements AutoCloseable {
     /**
      * Constructs a new instance with position zero.
      */
-    private MmapDatabase(String url, ByteBuffer buffer, long size) {
-        this.url    = url;
-        this.size   = (size + 7) & ~7;
+    private MmapDatabase(String path, ByteBuffer buffer, long size) {
+        this.path   = path;
+        this.size   = size;
+//      this.size   = (size + 7) & ~7;
         this.bytes  = buffer.order(ByteOrder.LITTLE_ENDIAN);
         this.shorts = bytes.asShortBuffer();
         this.ints   = bytes.asIntBuffer();
@@ -80,16 +93,16 @@ public class MmapDatabase implements AutoCloseable {
             putLong(ADDRESS_ROOT, 0);
             putLong(ADDRESS_NEXT, ADDRESS_FIRST);
         } else if(!valid) {
-            throw new RuntimeException("Not a valid database (" + url + ").");
+            throw new RuntimeException("MMAP(" + path + "): Not a valid database.");
         }
     }
 
-    public static MmapDatabase fromFile(Path path) throws StyxException {
+    public static MmapDatabase fromFile(Path path, long size) throws StyxException {
+        long align = 4 << 10;
+        size = (size+align-1) & ~(align-1);
         try(FileChannel fc = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.SPARSE)) {
-            long size = fc.size();
-            System.out.println("Database: opened '" + path + "', size = " + size + " bytes.");
-
-            if(size == 0) {
+            System.out.println("MMAP(" + path + "): opened, size = " + fc.size() + " bytes.");
+            if(size > fc.size()) {
 /*
                 // Works, but probably not sparse under Windows.
                 // Also, the file is opened twice. Is there a way to get RandomAccessFile from FileChannel?
@@ -105,17 +118,16 @@ public class MmapDatabase implements AutoCloseable {
                 }
 */
                 // Works, verified to be sparse under Linux and expectedly also under Windows.
-                size = 512 << 20;
                 fc.position(size);
                 fc.write(ByteBuffer.allocate(1)); // write a single byte at the end (this allocates a single page).
                 fc.truncate(size); // remove the byte written above (leaving zero pages allocated).
                 fc.position(0);
                 size = fc.size();
-                System.out.println("Database: grown to " + size + " bytes.");
+                System.out.println("MMAP(" + path + "): grown to " + size + " bytes.");
             }
 
             ByteBuffer buffer = fc.map(FileChannel.MapMode.READ_WRITE, 0, size);
-            System.out.println("Database: mapped.");
+            System.out.println("MMAP(" + path + "): mapped, size = " + size + " bytes.");
 
             return new MmapDatabase(path.toString(), buffer, size);
         } catch(IOException e) {
@@ -139,21 +151,12 @@ public class MmapDatabase implements AutoCloseable {
             shorts = null;
             ints   = null;
             longs  = null;
-            System.out.println("Database: closed (" + url + ").");
+            System.out.println("MMAP(" + path + "): closed.");
         }
     }
 
-    public void dump(PrintStream stm) {
-        if(bytes != null) {
-            stm.println("ByteBuffer properties (" + url + "):");
-//          stm.println("- isLoaded: " + bytes.isLoaded());
-            stm.println("- isDirect: " + bytes.isDirect());
-            stm.println("- capacity: " + bytes.capacity());
-            stm.println("Database properties (" + url + "):");
-            stm.println("- size: " + size);
-            stm.println("- root: " + getLong(ADDRESS_ROOT));
-            stm.println("- next: " + getLong(ADDRESS_NEXT));
-        }
+    public long getSize() {
+        return size;
     }
 
     public long getRoot() {
@@ -164,6 +167,7 @@ public class MmapDatabase implements AutoCloseable {
 
     public void setRoot(long address) {
         synchronized(this) {
+            // System.out.println("MMAP(" + path + "): comitted root = " + address + ".");
             putLong(ADDRESS_ROOT, address);
             notifyAll();
         }
@@ -174,6 +178,7 @@ public class MmapDatabase implements AutoCloseable {
             if(getLong(ADDRESS_ROOT) != expectedAddress) {
                 return false;
             }
+            // System.out.println("MMAP(" + path + "): comitted root = " + address + ".");
             putLong(ADDRESS_ROOT, address);
             notifyAll();
             return true;
@@ -192,72 +197,127 @@ public class MmapDatabase implements AutoCloseable {
         }
     }
 
-    private final MmapAvlTree sentinel = new MmapAvlTree(this, 0);
-
-//    private static final Session session = SessionManager.getDetachedSession(); // TODO static? detached? or something else?
-
-    private static Session session;
-
-    static {
-        try {
-            session = SessionManager.createMemorySessionFactory(false).createSession(); // TODO static? detached? or something else?
-        } catch (StyxException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public MmapAvlTree getSentinel() {
-        return sentinel;
-    }
-
-    public Complex getEmpty() {
-        return new ConcreteComplex(new MmapAvlTree(this, 0));
-    }
-
-    public Value loadValue(long address) throws StyxException {
-        if(address == -1) {
-            return null; // not used by MmapAvlTree, only required when [/][*] = null
-        }
-        if((address & 1) == 0) {
-            return new ConcreteComplex(new MmapAvlTree(this, address));
-        } else {
-            address--;
-            int size = getInt(address);
-            byte[] data = new byte[size];
-            getArray(address + 4, data);
-            ByteArrayInputStream stm = new ByteArrayInputStream(data);
-            return session.deserialize(stm);
-        }
-    }
-
-    public long storeValue(Value value) throws StyxException {
-        if(value == null) {
-            return -1; // not used by MmapAvlTree, only required when [/][*] = null
-        }
-        if(value.isComplex()) {
-            if(value instanceof ConcreteComplex == false) {
-                throw new StyxException("Unsupported implementation of Complex.");
-            }
-            ConcreteComplex complex = (ConcreteComplex) value;
-            if(complex.children() instanceof MmapAvlTree == false) {
-                throw new StyxException("Unsupported implementation of ImmutableSortedMap.");
-            }
-            MmapAvlTree tree = (MmapAvlTree) complex.children();
-            return tree.store();
-        } else {
-            ByteArrayOutputStream stm = new ByteArrayOutputStream();
-            session.serialize(value, stm, false);
-            long address = alloc(stm.size() + 4);
-            putInt(address, stm.size());
-            putArray(address + 4, stm.toByteArray());
-            return address | 1;
-        }
+    public long getNext() {
+        return getLong(ADDRESS_NEXT);
     }
 
     public long alloc(int size) {
         long address = getLong(ADDRESS_NEXT);
         putLong(ADDRESS_NEXT, address + ((size + 7) & ~7));
         return address;
+    }
+
+    private final MmapAvlTree sentinel = new MmapAvlTree(this, 0);
+
+    private final Complex empty = new ConcreteComplex(sentinel);
+
+    public MmapAvlTree getProxy(long address) {
+        if(address == 0) {
+            return sentinel;
+        } else {
+            return new MmapAvlTree(this, address);
+        }
+    }
+
+    public Complex getEmpty() {
+        return empty;
+    }
+
+//  private static final Session session = SessionManager.getDetachedSession(); // TODO static? detached? or something else?
+    private static Session session;
+
+    static {
+        try {
+            session = SessionManager.createMemorySessionFactory(false).createSession();
+        } catch (StyxException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Value loadValue(long address) {
+        try {
+            if(address == 0) {
+                return null; // not used by MmapAvlTree, only required when [/][*] = null
+            }
+            int tag = (int) ((address & TAG_MASK) >>> TAG_SHIFT);
+            int arg = (int) ((address & ARG_MASK) >>> ARG_SHIFT);
+            address = address & ~TAG_MASK;
+            switch(tag) {
+                case TAG_COMPLEX:
+                    return new ConcreteComplex(new MmapAvlTree(this, address));
+                case TAG_BOOL: // arg 0: false, arg 1: true
+                    return session.bool((int) address != 0);
+                case TAG_INTEGER:
+                    return session.number((int) address); // stored in low 32 bits
+                case TAG_BINARY: { // args: length (0..7)
+                    byte[] bytes = longToBytes(address, arg);
+                    return session.binary(bytes);
+                }
+                case TAG_TEXT: { // args: length (0..7)
+                    byte[] bytes = longToBytes(address, arg);
+                    return session.text(new String(bytes, StandardCharsets.UTF_8));
+                }
+                case TAG_OTHER: {
+                    int size = getInt(address);
+                    byte[] bytes = new byte[size];
+                    getArray(address + 4, bytes);
+                    ByteArrayInputStream stm = new ByteArrayInputStream(bytes);
+                    return session.deserialize(stm);
+                }
+                default:
+                    throw new StyxException("Illegal tag " + tag);
+            }
+        } catch(StyxException e) {
+            throw new RuntimeException("MMAP: Failed to load value from address="+address, e);
+        }
+    }
+
+    public long storeValue(Value value) {
+        try {
+            if(value == null) {
+                return 0; // not used by MmapAvlTree, only required when [/][*] = null
+            }
+            if(value.isComplex()) {
+                if(value instanceof ConcreteComplex == false) {
+                    throw new StyxException("Unsupported implementation of Complex.");
+                }
+                ConcreteComplex complex = (ConcreteComplex) value;
+                if(complex.children() instanceof MmapAvlTree == false) {
+                    throw new StyxException("Unsupported implementation of ImmutableSortedMap.");
+                }
+                MmapAvlTree tree = (MmapAvlTree) complex.children();
+                return ((long) TAG_COMPLEX << TAG_SHIFT) | tree.store();
+            }
+            if(value.isBool()) {
+                return ((long) TAG_BOOL << TAG_SHIFT) | (value.asBool().toBool() ? 1 : 0);
+            }
+            if(value.isNumber() && value.asNumber().isInteger()) {
+                return ((long) TAG_INTEGER << TAG_SHIFT) | (value.asNumber().toInteger() & 0x00000000FFFFFFFFL);
+            }
+            if(value.isBinary()) {
+                byte[] bytes = value.asBinary().toByteArray();
+                if(bytes.length <= 7) {
+                    return ((long) TAG_BINARY << TAG_SHIFT) | ((long) bytes.length << ARG_SHIFT) | bytesToLong(bytes);
+                }
+            }
+            if(value.isText()) {
+                String text = value.asText().toTextString();
+                if(text.length() <= 7) {
+                    byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+                    if(bytes.length <= 7) {
+                        return ((long) TAG_TEXT << TAG_SHIFT) | ((long) bytes.length << ARG_SHIFT) | bytesToLong(bytes);
+                    }
+                }
+            }
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            session.serialize(value, bytes, false);
+            long address = alloc(bytes.size() + 4);
+            putInt(address, bytes.size());
+            putArray(address + 4, bytes.toByteArray());
+            return ((long) TAG_OTHER << TAG_SHIFT) | address;
+        } catch(StyxException e) {
+            throw new RuntimeException("MMAP: Failed to store value.", e);
+        }
     }
 
     public final byte getByte(long address) {
@@ -306,5 +366,23 @@ public class MmapDatabase implements AutoCloseable {
         while(len-- > 0) {
             putByte(address++, data[pos++]);
         }
+    }
+
+    private byte[] longToBytes(long value, int num) {
+        byte[] data = new byte[num];
+        for(int i = 0; i < num; i++) {
+            data[i] = (byte) value;
+            value >>= 8;
+        }
+        return data;
+    }
+
+    private long bytesToLong(byte[] data) {
+        long value = 0;
+        for(int i = data.length - 1; i >= 0; i--) {
+            value <<= 8;
+            value |= data[i] & 0xFF;
+        }
+        return value;
     }
 }
