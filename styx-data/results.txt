@@ -1,0 +1,33 @@
+it took 39597ms
+37.16user 1.76system 0:40.48elapsed 96%CPU (0avgtext+0avgdata 811628maxresident)k
+229872inputs+1074744outputs (48major+152780minor)pagefaults 0swaps
+536420	database.mmap
+
+it took 34843ms
+36.87user 1.62system 0:35.09elapsed 109%CPU (0avgtext+0avgdata 811016maxresident)k
+0inputs+1074728outputs (1major+153624minor)pagefaults 0swaps
+536420	database.mmap
+
+it took 34813ms
+37.07user 1.66system 0:35.07elapsed 110%CPU (0avgtext+0avgdata 810668maxresident)k
+0inputs+1074664outputs (1major+157363minor)pagefaults 0swaps
+536420	database.mmap
+
+it took 35072ms
+36.71user 1.53system 0:35.32elapsed 108%CPU (0avgtext+0avgdata 810584maxresident)k
+0inputs+1074704outputs (1major+151541minor)pagefaults 0swaps
+536424	database.mmap
+
+it took 34649ms
+37.13user 1.59system 0:34.95elapsed 110%CPU (0avgtext+0avgdata 811396maxresident)k
+0inputs+1074672outputs (1major+155309minor)pagefaults 0swaps
+536420	database.mmap
+
+it took 34899ms
+37.18user 1.58system 0:35.16elapsed 110%CPU (0avgtext+0avgdata 808912maxresident)k
+0inputs+1074680outputs (1major+155120minor)pagefaults 0swaps
+536420	database.mmap
+
+----
+
+

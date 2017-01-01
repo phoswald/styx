@@ -1,0 +1,7 @@
+#!/bin/sh
+rm database.mmap
+cd ~/code/styx/styx-app
+time ./styx -factory mmap -file ~/code/styx-data/import_fpl.sts
+cd  ~/code/styx-data
+du database.mmap
+

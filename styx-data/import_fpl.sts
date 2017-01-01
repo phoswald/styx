@@ -1,0 +1,6 @@
+[/][*] = [fpl:[],temp:[1,2,3]]
+t1 :== time.current_millis()
+[/fpl][*] = file.import_large_xml("/home/philip/Misc/Fahrplan/tagesfpl-2014-08-07.xml", 1000, [/temp])
+t2 :== time.current_millis()
+console.write("it took " ++ (t2 - t1) ++ "ms")
+
